@@ -9,6 +9,7 @@ use Ariadne\Graph\EdgeType;
 use Ariadne\Graph\Graph;
 use Ariadne\Graph\Node;
 use Ariadne\Graph\NodeType;
+use PhpParser\Node\Arg;
 use PhpParser\Node as AstNode;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Expr\ArrowFunction;
@@ -20,6 +21,9 @@ use PhpParser\Node\Expr\BinaryOp\LogicalAnd;
 use PhpParser\Node\Expr\BinaryOp\LogicalOr;
 use PhpParser\Node\Expr\Closure;
 use PhpParser\Node\Expr\Match_;
+use PhpParser\Node\Expr\MethodCall;
+use PhpParser\Node\Expr\NullsafeMethodCall;
+use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Expr\Ternary;
 use PhpParser\Node\Expr\Throw_;
 use PhpParser\Node\Scalar\Int_;
@@ -53,6 +57,9 @@ use PhpParser\PrettyPrinter\Standard;
  * - Calls in loop headers (`while ($this->next())`) are not steps, as they run on every iteration.
  * - `do ... while` is drawn like `while`, with the condition node before the body.
  * - Exceptions thrown by called methods are unknown; a `try` links to each of its `catch` blocks.
+ * - A closure or arrow function passed straight to a method or static call is a callback: its calls follow that
+ *   call as plain steps entered by a `callback` edge. Whether the callee runs it is unknown, so the label says
+ *   "callback" and not "runs". Closures anywhere else add no steps. Their `return` and `throw` never leave the method.
  * - A `finally` is reached on normal completion only.
  * - Code after an unconditional return/throw/break/continue is unreachable and left out.
  */
@@ -338,7 +345,51 @@ final class MethodFlowBuilder
         if ($site !== null) {
             $step = $this->add(NodeType::Call, $site->label, $node);
             $this->connect($in, $step);
-            $in = [new FlowExit($step)];
+            $in = $this->callbacks($node, $step);
+        }
+
+        return $in;
+    }
+
+    /**
+     * The steps after a call: the calls inside each closure passed to it, then whatever comes next.
+     *
+     * @return list<FlowExit>
+     */
+    private function callbacks(AstNode $call, string $step): array
+    {
+        $in = [new FlowExit($step)];
+
+        if (!$call instanceof MethodCall && !$call instanceof NullsafeMethodCall && !$call instanceof StaticCall) {
+            return $in;
+        }
+
+        foreach ($call->args as $arg) {
+            if (!$arg instanceof Arg) {
+                continue;
+            }
+
+            $body = match (true) {
+                $arg->value instanceof Closure => $arg->value->stmts,
+                $arg->value instanceof ArrowFunction => [$arg->value->expr],
+                default => null,
+            };
+
+            if ($body === null) {
+                continue;
+            }
+
+            // The first step is entered through the `callback` edge; later ones follow each other.
+            $entered = array_map(static fn(FlowExit $exit): FlowExit => new FlowExit($exit->from, 'callback'), $in);
+            $out = $entered;
+
+            foreach ($body as $part) {
+                $out = $this->flat($part, $out);
+            }
+
+            if ($out !== $entered) {
+                $in = $out;
+            }
         }
 
         return $in;

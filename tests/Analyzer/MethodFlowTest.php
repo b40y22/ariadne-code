@@ -490,6 +490,75 @@ final class MethodFlowTest extends TestCase
         self::assertNotContains('throw throw new \E() -> call $this->after', $flow);
     }
 
+    #[Test]
+    public function an_arrow_function_passed_to_a_call_shows_its_calls_after_that_call(): void
+    {
+        $flow = $this->flow('function a() { return DB::transaction(fn () => $this->book()); }');
+
+        self::assertSame([
+            'start -> call DB::transaction',
+            'call DB::transaction -> call $this->book [callback]',
+            'call $this->book -> return return DB::transaction(fn() => $this->book())',
+            'return return DB::transaction(fn() => $this->book()) -> end',
+        ], $flow);
+    }
+
+    #[Test]
+    public function a_closure_body_becomes_plain_steps_in_source_order(): void
+    {
+        $flow = $this->flow('function a() { $this->each(function ($x) { $this->one($x); $this->two($x); }); $this->after(); }');
+
+        self::assertSame([
+            'start -> call $this->each',
+            'call $this->each -> call $this->one [callback]',
+            'call $this->one -> call $this->two',
+            'call $this->two -> call $this->after',
+            'call $this->after -> end',
+        ], $flow);
+    }
+
+    #[Test]
+    public function a_callback_without_calls_adds_nothing(): void
+    {
+        $flow = $this->flow('function a() { $this->each(fn ($x) => $x * 2); $this->after(); }');
+
+        self::assertSame([
+            'start -> call $this->each',
+            'call $this->each -> call $this->after',
+            'call $this->after -> end',
+        ], $flow);
+    }
+
+    #[Test]
+    public function several_callbacks_follow_one_after_another(): void
+    {
+        $flow = $this->flow('function a() { $this->when(fn () => $this->x(), fn () => $this->y()); }');
+
+        self::assertSame([
+            'start -> call $this->when',
+            'call $this->when -> call $this->x [callback]',
+            'call $this->x -> call $this->y [callback]',
+            'call $this->y -> end',
+        ], $flow);
+    }
+
+    #[Test]
+    public function return_and_throw_inside_a_callback_do_not_leave_the_method(): void
+    {
+        $flow = $this->flow('function a() { $this->each(function () { $this->x(); return; }); $this->after(); }');
+
+        self::assertContains('call $this->x -> call $this->after', $flow);
+        self::assertNotContains('call $this->x -> end', $flow);
+    }
+
+    #[Test]
+    public function a_closure_that_is_not_an_argument_of_a_call_adds_no_steps(): void
+    {
+        $flow = $this->flow('function a() { $f = function () { $this->x(); }; $g = fn () => $this->y(); }');
+
+        self::assertSame(['start -> end'], $flow);
+    }
+
     /**
      * Flow edges of method "A::a" as "from -> to [label]" strings, in creation order.
      * Start and end print as their type, other nodes as "type name".
