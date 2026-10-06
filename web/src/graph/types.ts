@@ -19,7 +19,7 @@ export type NodeType =
   | 'return'
   | 'throw'
 
-export type EdgeType = 'contains' | 'calls' | 'flow'
+export type EdgeType = 'contains' | 'calls' | 'flow' | 'target'
 
 export interface GraphNode {
   id: string

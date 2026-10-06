@@ -10,6 +10,29 @@ export interface FlowNodeData {
   kind: FlowKind
   title: string
   subtitle: string
+  /** For a call step: the method or function it calls, when that has a flow of its own to open. */
+  opens?: string
+}
+
+/** The kinds of node that have a flow of their own. */
+const HAS_FLOW: ReadonlySet<NodeType> = new Set<NodeType>(['method', 'function', 'script'])
+
+/**
+ * The call steps of a flow whose call reaches a method or function with a flow of its own, by the analyzer's
+ * `target` edges. A call that stays unresolved or ends outside the analyzed files opens nothing.
+ */
+export function stepTargets(graph: Graph, methodId: string): Map<string, string> {
+  const steps = new Set(graph.nodes.filter((node) => node.parent === methodId).map((node) => node.id))
+  const withFlow = new Set(graph.nodes.filter((node) => HAS_FLOW.has(node.type)).map((node) => node.id))
+  const targets = new Map<string, string>()
+
+  for (const edge of graph.edges) {
+    if (edge.type === 'target' && steps.has(edge.from) && withFlow.has(edge.to)) {
+      targets.set(edge.from, edge.to)
+    }
+  }
+
+  return targets
 }
 
 /** A Vue Flow node that is known to carry its display data. */
@@ -159,6 +182,7 @@ export function toMethodFlow(graph: Graph, methodId: string, options: FlowOption
   const owner = graph.nodes.find((node) => node.id === methodId)
   // A script is named after its file, which is not something that can be called.
   const entry = owner?.type === 'script' ? (owner.name) : `${owner?.name ?? ''}()`
+  const targets = stepTargets(graph, methodId)
 
   const nodes: FlowNode[] = graph.nodes
     .filter((node) => node.parent === methodId && FLOW_KINDS.has(node.type) && (includeBuiltins || node.type !== 'builtin'))
@@ -174,7 +198,7 @@ export function toMethodFlow(graph: Graph, methodId: string, options: FlowOption
             ? { kind, title: 'Start', subtitle: entry }
             : kind === 'end'
               ? { kind, title: 'End', subtitle: '' }
-              : { kind, title: node.name, subtitle: lineRange(node) },
+              : { kind, title: node.name, subtitle: lineRange(node), ...(targets.has(node.id) ? { opens: targets.get(node.id) } : {}) },
       }
     })
 

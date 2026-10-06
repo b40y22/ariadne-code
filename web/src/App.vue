@@ -87,6 +87,27 @@ const selectedMethodId = computed(() => {
   return node !== undefined && HAS_FLOW.has(node.type) ? node.id : undefined
 })
 
+/**
+ * The flows the reader stepped into from a call step, the most recent last: the way back. Cleared whenever the
+ * reader goes somewhere by other means (the map, the picker, a link).
+ */
+const trail = ref<string[]>([])
+
+const nameOf = (id: string): string => {
+  const node = (project.value?.graph ?? graph.value)?.nodes.find((candidate) => candidate.id === id)
+
+  return node === undefined ? id : node.type === 'script' ? node.name : `${node.name}()`
+}
+
+const backLabel = computed(() => {
+  const previous = trail.value.at(-1)
+
+  return previous === undefined ? null : nameOf(previous)
+})
+
+/** The method the selected call step calls, when it has a flow to open. */
+const selectedOpens = computed(() => (view.value.kind === 'flow' && selected.value !== null ? flowData.value.get(selected.value.id)?.opens : undefined))
+
 const builtinCount = computed(() => (graph.value !== null && flowMethodId.value !== undefined ? countBuiltins(graph.value, flowMethodId.value) : 0))
 
 const breadcrumb = computed(() => {
@@ -265,13 +286,15 @@ function onPick(event: Event): void {
   const unit = units.value.find((candidate) => candidate.name === name)
 
   if (unit !== undefined && unit.id !== focus.value) {
-    void focusOn(unit.id)
+    void focusFresh(unit.id)
   }
 }
 
 /** Pasting a link or using the browser's back and forward buttons changes only the hash; follow it. */
 async function onHashChange(): Promise<void> {
   const wanted = viewFromHash(location.hash)
+
+  trail.value = []
 
   if (projectMode) {
     const unit = focusFromHash(location.hash) ?? focus.value
@@ -294,7 +317,8 @@ async function onHashChange(): Promise<void> {
   }
 }
 
-async function openFlow(methodId: string): Promise<void> {
+/** Opens the flow of a method, function or script. True when it is shown. */
+async function openFlow(methodId: string): Promise<boolean> {
   if (projectMode) {
     const unit = project.value === null ? undefined : unitOf(project.value.graph, methodId)
 
@@ -302,18 +326,52 @@ async function openFlow(methodId: string): Promise<void> {
       error.value = null
       await focusOn(unit, { kind: 'flow', methodId })
     }
+  } else {
+    const current = graph.value
 
-    return
+    if (current === null || !HAS_FLOW.has(current.nodes.find((node) => node.id === methodId)?.type ?? '')) {
+      return false
+    }
+
+    error.value = null
+    await show(current, { kind: 'flow', methodId })
   }
 
-  const current = graph.value
+  return view.value.kind === 'flow' && view.value.methodId === methodId
+}
 
-  if (current === null || !HAS_FLOW.has(current.nodes.find((node) => node.id === methodId)?.type ?? '')) {
-    return
+/** A double-click: on a call step, step into the method it calls; on a method of the map, open its flow. */
+async function onOpen(id: string): Promise<void> {
+  const target = view.value.kind === 'flow' ? flowData.value.get(id)?.opens : undefined
+
+  if (target !== undefined) {
+    await stepInto(target)
+  } else if (view.value.kind === 'map') {
+    trail.value = []
+    await openFlow(id)
   }
+}
 
-  error.value = null
-  await show(current, { kind: 'flow', methodId })
+async function stepInto(target: string): Promise<void> {
+  const from = flowMethodId.value
+
+  if (from !== undefined && (await openFlow(target))) {
+    trail.value = [...trail.value, from]
+  }
+}
+
+async function stepOut(): Promise<void> {
+  const previous = trail.value.at(-1)
+
+  if (previous !== undefined) {
+    trail.value = trail.value.slice(0, -1)
+    await openFlow(previous)
+  }
+}
+
+async function focusFresh(unit: string): Promise<void> {
+  trail.value = []
+  await focusOn(unit)
 }
 
 async function toggleUnresolved(): Promise<void> {
@@ -336,6 +394,8 @@ async function toggleBuiltins(): Promise<void> {
 }
 
 async function backToMap(): Promise<void> {
+  trail.value = []
+
   if (projectMode && focus.value !== null) {
     error.value = null
     await focusOn(focus.value)
@@ -415,6 +475,18 @@ onMounted(run)
       </button>
       <template v-if="breadcrumb">
         <button type="button" class="button" @click="backToMap">← Class map</button>
+        <button v-if="backLabel" type="button" class="button" title="Back to the flow this one was opened from" @click="stepOut">
+          ← {{ backLabel }}
+        </button>
+        <button
+          type="button"
+          class="button"
+          :disabled="selectedOpens === undefined"
+          title="Open the flow of the method the selected call step calls (or double-click the step)"
+          @click="selectedOpens !== undefined && stepInto(selectedOpens)"
+        >
+          Open call ↘
+        </button>
         <button
           type="button"
           class="button toggle"
@@ -433,7 +505,7 @@ onMounted(run)
           type="button"
           class="button"
           :disabled="selectedMethodId === undefined"
-          @click="selectedMethodId !== undefined && openFlow(selectedMethodId)"
+          @click="selectedMethodId !== undefined && onOpen(selectedMethodId)"
         >
           Show flow
         </button>
@@ -443,7 +515,7 @@ onMounted(run)
           class="button"
           :disabled="focusTarget === undefined"
           title="Focus the map on the class of the selected block"
-          @click="focusTarget !== undefined && focusOn(focusTarget)"
+          @click="focusTarget !== undefined && focusFresh(focusTarget)"
         >
           Focus
         </button>
@@ -475,7 +547,7 @@ onMounted(run)
             :mode="view.kind"
             :unresolved="showUnresolved"
             @select="onGraphSelect"
-            @open="openFlow"
+            @open="onOpen"
           />
         </div>
         <ReplayPanel
@@ -528,6 +600,8 @@ onMounted(run)
 }
 
 .title {
+  flex: none;
+  white-space: nowrap;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -545,7 +619,9 @@ onMounted(run)
 }
 
 .button {
+  flex: none;
   padding: 7px 14px;
+  white-space: nowrap;
   border: 1px solid var(--border-strong);
   border-radius: 8px;
   background: var(--surface-raised);
@@ -582,7 +658,8 @@ onMounted(run)
 }
 
 .picker {
-  width: 280px;
+  flex: 0 1 260px;
+  min-width: 140px;
   padding: 7px 12px;
   border: 1px solid var(--border-strong);
   border-radius: 8px;
@@ -597,6 +674,10 @@ onMounted(run)
 }
 
 .crumbs {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--text);
   font: 13px var(--font-code);
 }
@@ -606,6 +687,12 @@ onMounted(run)
 }
 
 .file {
+  /* The file name gives way before the breadcrumb does. */
+  flex: 0 3 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   margin-left: auto;
   color: var(--muted);
   font: 12px var(--font-code);

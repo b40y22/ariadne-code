@@ -9,6 +9,8 @@ const MAX_NODE_WIDTH = 420
 const CHAR_WIDTH = 8.5
 // Icon, gaps and padding around the title.
 const CHROME = 78
+// The mark on a call step that opens the flow of the method it calls.
+const OPENS_MARK = 24
 // Room for the class header above its methods.
 const GROUP_PADDING = { top: 74, left: 22, bottom: 22, right: 22 }
 const GROUP_MIN_HEIGHT = 110
@@ -29,7 +31,7 @@ interface Box {
 }
 
 /** A node that shows a title and a subtitle, which is what sizes it. */
-export type LayoutNode = Node & { data: { title: string; subtitle: string } }
+export type LayoutNode = Node & { data: { title: string; subtitle: string; opens?: string } }
 
 export interface LayoutOptions {
   /** Direction of the main flow. The class map reads left to right, a method flow top to bottom. */
@@ -56,7 +58,9 @@ const FLOW_OPTIONS: Record<string, string> = {
 export function widthOf(node: LayoutNode): number {
   const longest = Math.max(node.data.title.length, node.data.subtitle.length)
 
-  return Math.min(MAX_NODE_WIDTH, Math.max(MIN_NODE_WIDTH, Math.round(longest * CHAR_WIDTH + CHROME)))
+  const chrome = CHROME + (node.data.opens === undefined ? 0 : OPENS_MARK)
+
+  return Math.min(MAX_NODE_WIDTH, Math.max(MIN_NODE_WIDTH, Math.round(longest * CHAR_WIDTH + chrome)))
 }
 
 export interface Grid {

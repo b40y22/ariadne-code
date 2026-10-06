@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Handle, Position } from '@vue-flow/core'
-import { Flag, GitBranch, Play, Repeat, Shield, ShieldAlert, ShieldCheck, TriangleAlert, Undo2, Wrench, Zap } from 'lucide-vue-next'
+import { CornerDownRight, Flag, GitBranch, Play, Repeat, Shield, ShieldAlert, ShieldCheck, TriangleAlert, Undo2, Wrench, Zap } from 'lucide-vue-next'
 import { computed } from 'vue'
 
 import type { FlowKind, FlowNodeData } from '../graph/toMethodFlow'
@@ -25,13 +25,18 @@ const icon = computed(() => ICONS[props.data.kind])
 </script>
 
 <template>
-  <div class="flow-node" :class="`kind-${data.kind}`" :title="data.title">
+  <div
+    class="flow-node"
+    :class="[`kind-${data.kind}`, { opens: data.opens }]"
+    :title="data.opens ? `${data.title}: double-click to open the flow of the method it calls` : data.title"
+  >
     <Handle type="target" :position="Position.Top" />
     <span class="icon"><component :is="icon" :size="16" :stroke-width="1.75" /></span>
     <span class="text">
       <span class="title">{{ data.title }}</span>
       <span v-if="data.subtitle" class="subtitle">{{ data.subtitle }}</span>
     </span>
+    <CornerDownRight v-if="data.opens" class="opens-mark" :size="14" :stroke-width="2" aria-label="opens a flow" />
     <Handle type="source" :position="Position.Bottom" />
     <!-- Loop-backs travel along the right edge instead of cutting through the nodes in between. -->
     <Handle id="loop-out" type="source" :position="Position.Right" />
@@ -95,6 +100,18 @@ const icon = computed(() => ICONS[props.data.kind])
 .flow-node.kind-call .icon {
   background: rgba(var(--accent-rgb), 0.1);
   color: var(--accent);
+}
+
+/* A call into code of the project: it can be stepped into. */
+.flow-node .opens-mark {
+  flex: none;
+  margin-left: auto;
+  color: var(--accent);
+  opacity: 0.7;
+}
+
+.vue-flow__node:hover .flow-node.opens {
+  cursor: pointer;
 }
 
 /* A builtin is a quiet step: present, but it must not compete with the calls that matter. */
