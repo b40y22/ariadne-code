@@ -3,6 +3,8 @@
 export type NodeType =
   | 'class'
   | 'method'
+  | 'function'
+  | 'script'
   | 'unresolved'
   | 'start'
   | 'end'

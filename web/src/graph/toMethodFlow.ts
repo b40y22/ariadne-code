@@ -92,7 +92,9 @@ function edgeColor(label: string | null): string {
  * Returns nothing for a method without a body (abstract or interface methods).
  */
 export function toMethodFlow(graph: Graph, methodId: string): { nodes: FlowNode[]; edges: Edge[] } {
-  const methodName = graph.nodes.find((node) => node.id === methodId)?.name ?? ''
+  const owner = graph.nodes.find((node) => node.id === methodId)
+  // A script is named after its file, which is not something that can be called.
+  const entry = owner?.type === 'script' ? (owner.name) : `${owner?.name ?? ''}()`
 
   const nodes: FlowNode[] = graph.nodes
     .filter((node) => node.parent === methodId && FLOW_KINDS.has(node.type))
@@ -105,7 +107,7 @@ export function toMethodFlow(graph: Graph, methodId: string): { nodes: FlowNode[
         position: { x: 0, y: 0 },
         data:
           kind === 'start'
-            ? { kind, title: 'Start', subtitle: `${methodName}()` }
+            ? { kind, title: 'Start', subtitle: entry }
             : kind === 'end'
               ? { kind, title: 'End', subtitle: '' }
               : { kind, title: node.name, subtitle: lineRange(node) },

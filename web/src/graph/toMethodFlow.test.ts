@@ -75,6 +75,26 @@ describe('toMethodFlow', () => {
     expect(new Set(ids).size).toBe(2)
   })
 
+  it('names the start of a script after its file and of a function after the call', () => {
+    const script: Graph = {
+      nodes: [
+        { id: 'script:A.php', type: 'script', name: 'A.php', file: 'A.php', lineStart: 1, lineEnd: 9, parent: null },
+        { ...flowNode(1, 'start', 'start', 1, 9), id: 'flow:script:A.php#1', parent: 'script:A.php' },
+      ],
+      edges: [],
+    }
+    const fn: Graph = {
+      nodes: [
+        { id: 'function:helper', type: 'function', name: 'helper', file: 'A.php', lineStart: 3, lineEnd: 5, parent: null },
+        { ...flowNode(1, 'start', 'start', 3, 5), id: 'flow:function:helper#1', parent: 'function:helper' },
+      ],
+      edges: [],
+    }
+
+    expect(toMethodFlow(script, 'script:A.php').nodes[0]?.data.subtitle).toBe('A.php')
+    expect(toMethodFlow(fn, 'function:helper').nodes[0]?.data.subtitle).toBe('helper()')
+  })
+
   it('returns nothing for a method without flow', () => {
     expect(toMethodFlow(graph, 'method:A::abstract')).toEqual({ nodes: [], edges: [] })
   })

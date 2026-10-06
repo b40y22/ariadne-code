@@ -110,6 +110,9 @@ onBeforeUnmount(() => {
   window.removeEventListener('hashchange', onHashChange)
 })
 
+/** The kinds of node that have a flow of their own. */
+const HAS_FLOW: ReadonlySet<string> = new Set(['method', 'function', 'script'])
+
 const flowMethodId = computed(() => (view.value.kind === 'flow' ? view.value.methodId : undefined))
 
 // Each method flow keeps its own saved layout next to the class map's.
@@ -118,7 +121,7 @@ const layoutId = computed(() => (flowMethodId.value === undefined ? fileName.val
 const selectedMethodId = computed(() => {
   const node = graph.value?.nodes.find((candidate) => candidate.id === selected.value?.id)
 
-  return node?.type === 'method' ? node.id : undefined
+  return node !== undefined && HAS_FLOW.has(node.type) ? node.id : undefined
 })
 
 const breadcrumb = computed(() => {
@@ -133,7 +136,8 @@ const breadcrumb = computed(() => {
   const owner = current.edges.find((edge) => edge.type === 'contains' && edge.to === methodId)
   const cls = current.nodes.find((node) => node.id === owner?.from)
 
-  return { cls: cls?.name ?? '', method: `${method?.name ?? ''}()` }
+  // A function or a script has no class around it; a script is named after its file.
+  return { cls: cls?.name ?? '', method: method?.type === 'script' ? (method.name) : `${method?.name ?? ''}()` }
 })
 
 const highlight = computed<Highlight | null>(() => {
@@ -231,7 +235,7 @@ async function onHashChange(): Promise<void> {
 async function openFlow(methodId: string): Promise<void> {
   const current = graph.value
 
-  if (current === null || current.nodes.find((node) => node.id === methodId)?.type !== 'method') {
+  if (current === null || !HAS_FLOW.has(current.nodes.find((node) => node.id === methodId)?.type ?? '')) {
     return
   }
 
@@ -345,7 +349,9 @@ onMounted(run)
       </button>
       <template v-if="breadcrumb">
         <button type="button" class="button" @click="backToMap">← Class map</button>
-        <span class="crumbs"><span class="crumb-class">{{ breadcrumb.cls }}</span> › {{ breadcrumb.method }}</span>
+        <span class="crumbs">
+          <template v-if="breadcrumb.cls"><span class="crumb-class">{{ breadcrumb.cls }}</span> › </template>{{ breadcrumb.method }}
+        </span>
       </template>
       <button
         v-else

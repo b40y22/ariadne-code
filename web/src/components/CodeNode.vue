@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { Handle, Position } from '@vue-flow/core'
-import { Box, Braces, CircleHelp } from 'lucide-vue-next'
+import { Box, Braces, CircleHelp, FileCode, SquareFunction } from 'lucide-vue-next'
 import { computed } from 'vue'
 
 import type { CodeNodeData } from '../graph/toFlow'
 
 const props = defineProps<{ data: CodeNodeData }>()
 
-const icon = computed(() => ({ class: Box, method: Braces, unresolved: CircleHelp })[props.data.kind])
+const icon = computed(() => ({ class: Box, method: Braces, function: SquareFunction, script: FileCode, unresolved: CircleHelp })[props.data.kind])
 </script>
 
 <template>
@@ -74,6 +74,14 @@ const icon = computed(() => ({ class: Box, method: Braces, unresolved: CircleHel
 
 .code-node.kind-class {
   border-color: var(--border-strong);
+}
+
+.code-node.kind-script {
+  border-color: rgba(var(--accent-rgb), 0.5);
+}
+
+.code-node.kind-script .icon {
+  background: rgba(var(--accent-rgb), 0.18);
 }
 
 .code-node.kind-unresolved {

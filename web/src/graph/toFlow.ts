@@ -2,7 +2,7 @@ import type { Edge, MarkerType, Node } from '@vue-flow/core'
 import { theme } from '../theme'
 import type { Graph, GraphNode, NodeType } from './types'
 
-export type CodeNodeKind = 'class' | 'method' | 'unresolved'
+export type CodeNodeKind = 'class' | 'method' | 'function' | 'script' | 'unresolved'
 
 /** What the `code` node component renders. */
 export interface CodeNodeData {
@@ -14,7 +14,7 @@ export interface CodeNodeData {
 /** A Vue Flow node that is known to carry its display data. */
 export type CodeNode = Node<CodeNodeData> & { data: CodeNodeData }
 
-const CLASS_MAP_TYPES: ReadonlySet<NodeType> = new Set(['class', 'method', 'unresolved'])
+const CLASS_MAP_TYPES: ReadonlySet<NodeType> = new Set(['class', 'method', 'function', 'script', 'unresolved'])
 
 /** "L11–18", or "L9" for a single line, or "" when the node has no location. */
 export function lineRange(node: GraphNode): string {
@@ -30,8 +30,12 @@ function describe(node: GraphNode, methodCount: number): CodeNodeData {
     return { kind: 'class', title: node.name, subtitle: `${methodCount} ${methodCount === 1 ? 'method' : 'methods'}` }
   }
 
-  if (node.type === 'method') {
-    return { kind: 'method', title: `${node.name}()`, subtitle: lineRange(node) }
+  if (node.type === 'method' || node.type === 'function') {
+    return { kind: node.type, title: `${node.name}()`, subtitle: lineRange(node) }
+  }
+
+  if (node.type === 'script') {
+    return { kind: 'script', title: node.name, subtitle: `script · ${lineRange(node)}` }
   }
 
   return { kind: 'unresolved', title: node.name, subtitle: 'not resolved statically' }

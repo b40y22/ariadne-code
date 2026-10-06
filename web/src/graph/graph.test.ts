@@ -106,6 +106,32 @@ describe('nodeAtLine', () => {
     expect(nodeAtLine(graph, 99)).toBeUndefined()
   })
 
+  describe('functions and scripts', () => {
+    const procedural: Graph = {
+      nodes: [
+        node('script:A.php', 'script', 1, 30),
+        node('function:helper', 'function', 5, 9),
+        node('unresolved:array_sum', 'unresolved'),
+      ],
+      edges: [edge('script:A.php', 'function:helper', 'calls', 20), edge('function:helper', 'unresolved:array_sum', 'calls', 7)],
+    }
+
+    it('prefers the function over the script that surrounds it', () => {
+      expect(nodeAtLine(procedural, 7)?.id).toBe('function:helper')
+      expect(nodeAtLine(procedural, 20)?.id).toBe('script:A.php')
+    })
+
+    it('shows both as nodes on the class map, with the calls between them', () => {
+      const { nodes, edges } = toClassMap(procedural)
+      const byId = new Map(nodes.map((n) => [n.id, n]))
+
+      expect(byId.get('function:helper')?.data).toMatchObject({ kind: 'function', title: 'helper()', subtitle: 'L5–9' })
+      expect(byId.get('script:A.php')?.data).toMatchObject({ kind: 'script', title: 'A.php', subtitle: 'script · L1–30' })
+      expect(byId.get('function:helper')?.parentNode).toBeUndefined()
+      expect(edges.map((e) => `${e.source}>${e.target}`)).toEqual(['script:A.php>function:helper', 'function:helper>unresolved:array_sum'])
+    })
+  })
+
   describe('within a method', () => {
     const scoped: Graph = {
       nodes: [
