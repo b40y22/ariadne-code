@@ -4,7 +4,7 @@ Static analyzer that turns PHP source into a language-agnostic **Code Graph**: t
 
 ![Ariadne Code: class map next to the source code](docs/screenshot.png)
 
-> **Status:** early development. The analyzer extracts classes, methods and method calls. An interactive visualization will be built on top of the graph later.
+> **Status: 0.1.** Works on one PHP file at a time: classes, functions and plain scripts, the control flow of every method, and a step-by-step replay of it. Calls into other files are not followed yet, so they show as unresolved. See the [changelog](CHANGELOG.md) and the [roadmap](#roadmap).
 
 ```
 PHP source → AST (nikic/php-parser) → Analyzer → Code Graph (JSON) → visualization
@@ -14,25 +14,22 @@ Principle: **static analysis first, visualization second, AI third.** The graph 
 
 ## Quick start
 
-Everything runs in Docker, so no local PHP is required.
+Everything runs in Docker, so no local PHP or Node is required.
 
 ```bash
 make build
 make install
-make demo
+make web-install
+make up    # UI on http://localhost:5180, API on http://localhost:8090
 ```
 
 ### Web UI
-
-```bash
-make up    # UI on http://localhost:5180, API on http://localhost:8090
-```
 
 The page shows the class map next to the source code. Click a node to jump to its code; move the cursor in the editor to highlight the matching node. Use **Open .php** to analyze your own file.
 
 Calls the analyzer cannot trace to a declaration (builtins, calls on other objects) are hidden on the map by default, because there are often more of them than real nodes; the **Unresolved (N)** button shows them. A class with more than 14 methods is laid out as a grid, four across, instead of a column that would have to be shrunk until nothing can be read. Classes are containers that hold their methods and can be resized; drag any block and the layout is remembered per file.
 
-**Method flow:** double-click a method (or select it and press **Show flow**) to see how it runs: its calls in execution order, `if` branches (`true`/`false`), loops, `try`/`catch`, `return` and `throw`. A flow can be shared by link, e.g. `http://localhost:5180/#method=method:App\\OrderService::createOrder`.
+**Method flow:** double-click a method (or select it and press **Show flow**) to see how it runs: its calls in execution order, `if` branches (`true`/`false`), loops, `try`/`catch`, `return` and `throw`. A flow can be shared by link, e.g. `http://localhost:5180/#method=method:App\OrderService::createOrder`.
 
 ![Method flow of createOrder](docs/screenshot-flow.png)
 
@@ -46,7 +43,7 @@ Calls the analyzer cannot trace to a declaration (builtins, calls on other objec
 
 The API is a single endpoint, `POST /api/analyze` with `{"code": "...", "file": "A.php"}`, answering with the Code Graph JSON. Submitted code is only parsed, never executed or stored, and requests are limited to 1 MB.
 
-`make demo` analyzes [`tests/fixtures/OrderService.php`](tests/fixtures/OrderService.php) and prints its graph. To analyze your own file:
+`make demo` analyzes the demo class [`tests/fixtures/OrderShowcase.php`](tests/fixtures/OrderShowcase.php) on the command line and prints its graph as JSON. To analyze your own file:
 
 ```bash
 docker compose run --rm php php bin/ariadne analyze path/to/YourClass.php
@@ -57,11 +54,11 @@ docker compose run --rm php php bin/ariadne analyze path/to/YourClass.php
 ```json
 {
   "nodes": [
-    { "id": "method:App\\OrderService::createOrder", "type": "method", "name": "createOrder", "file": "OrderService.php", "lineStart": 11, "lineEnd": 18 },
-    { "id": "unresolved:$this->orders->save", "type": "unresolved", "name": "$this->orders->save", "file": null, "lineStart": null, "lineEnd": null }
+    { "id": "method:App\\OrderService::createOrder", "type": "method", "name": "createOrder", "file": "OrderService.php", "lineStart": 11, "lineEnd": 18, "parent": null },
+    { "id": "unresolved:$this->orders->save", "type": "unresolved", "name": "$this->orders->save", "file": null, "lineStart": null, "lineEnd": null, "parent": null }
   ],
   "edges": [
-    { "from": "method:App\\OrderService::createOrder", "to": "unresolved:$this->orders->save", "type": "calls", "line": 17 }
+    { "from": "method:App\\OrderService::createOrder", "to": "unresolved:$this->orders->save", "type": "calls", "line": 17, "label": null }
   ]
 }
 ```
@@ -89,7 +86,7 @@ Analyzing [`ShippingService`](tests/fixtures/ShippingService.php) gives, for `sh
 
 ```
 start -> condition $items === []
-condition $items === [] -> return return false            [true]
+condition $items === [] -> return false                   [true]
 condition $items === [] -> loop foreach ($items as $item)  [false]
 loop foreach ($items as $item) -> call $this->inStock      [body]
 call $this->inStock -> condition !$this->inStock($item)
@@ -132,7 +129,7 @@ make stan
 make fix     # auto-format
 ```
 
-Requires PHP 8.5. The graph for [`OrderService.php`](tests/fixtures/OrderService.php) is pinned by a snapshot test ([`OrderService.graph.json`](tests/fixtures/OrderService.graph.json)).
+The project targets PHP 8.5; the Docker image has it, so nothing needs installing locally. The graph of every fixture in [`tests/fixtures`](tests/fixtures) is pinned by a snapshot test.
 
 ## Roadmap
 
@@ -148,6 +145,10 @@ Requires PHP 8.5. The graph for [`OrderService.php`](tests/fixtures/OrderService
 - [x] Execution replay: step through a method, choosing branches (static, no runtime tracing)
 - [ ] Web UI: expand/collapse of dependencies
 - [ ] AI explanations grounded in the graph
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md): how to run the checks, the showcase rule and the commit format.
 
 ## License
 
