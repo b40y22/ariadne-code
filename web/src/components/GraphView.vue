@@ -15,7 +15,7 @@ import '@vue-flow/core/dist/theme-default.css'
 const props = defineProps<{ nodes: Node[]; edges: Edge[]; selectedId: string | null; fileName: string }>()
 const emit = defineEmits<{ select: [id: string] }>()
 
-const { fitView, getNodes, updateNode, onNodeClick, onNodeDragStop, onNodesInitialized } = useVueFlow()
+const { fitView, getNodes, updateNode, onNodeClick, onNodeDragStop, onNodesChange, onNodesInitialized } = useVueFlow()
 
 // Vue Flow owns the node positions from here on. Props only deliver a freshly analyzed graph;
 // selection and dragging must never rebuild nodes from them, or dragged blocks jump back.
@@ -56,7 +56,15 @@ watch(
 )
 
 onNodeClick(({ node }) => emit('select', node.id))
-onNodeDragStop(() => savePositions(localStorage, layoutKey(props.fileName), getNodes.value))
+const remember = (): void => savePositions(localStorage, layoutKey(props.fileName), getNodes.value)
+
+onNodeDragStop(remember)
+// `resizing === false` marks the end of a resize drag; dimension changes during layout carry no flag.
+onNodesChange((changes) => {
+  if (changes.some((change) => change.type === 'dimensions' && change.resizing === false)) {
+    remember()
+  }
+})
 
 onNodesInitialized(() => {
   if (pendingFit) {
@@ -89,7 +97,7 @@ defineExpose({ resetLayout })
       :elements-selectable="false"
     >
       <template #node-class-group="nodeProps">
-        <ClassGroup :data="nodeProps.data" />
+        <ClassGroup :id="nodeProps.id" :data="nodeProps.data" />
       </template>
       <template #node-code="nodeProps">
         <CodeNode :data="nodeProps.data" />

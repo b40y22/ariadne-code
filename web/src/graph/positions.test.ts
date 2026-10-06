@@ -24,6 +24,32 @@ describe('positions', () => {
     expect(loadPositions(storage, 'k')).toEqual({ a: { x: 10, y: 21 }, b: { x: -5, y: 0 } })
   })
 
+  it('remembers the size of resizable class groups only', () => {
+    const storage = memoryStorage()
+    const group = { id: 'g', type: 'class-group', position: { x: 1, y: 2 }, dimensions: { width: 300.4, height: 200.6 } }
+    const plain = { id: 'm', type: 'code', position: { x: 5, y: 6 }, dimensions: { width: 190, height: 58 } }
+
+    savePositions(storage, 'k', [group, plain])
+
+    expect(loadPositions(storage, 'k')).toEqual({ g: { x: 1, y: 2, width: 300, height: 201 }, m: { x: 5, y: 6 } })
+  })
+
+  it('restores a saved size on class groups but not on other nodes', () => {
+    const nodes: Node[] = [
+      { id: 'g', type: 'class-group', position: { x: 0, y: 0 }, style: { width: '100px', height: '80px' } },
+      { id: 'm', type: 'code', position: { x: 0, y: 0 }, style: { width: '190px', height: '58px' } },
+    ]
+
+    const [group, method] = applyPositions(nodes, { g: { x: 9, y: 9, width: 400, height: 300 }, m: { x: 4, y: 4, width: 1, height: 1 } })
+
+    expect(group?.style).toEqual({ width: '400px', height: '300px' })
+    expect(method?.style).toEqual({ width: '190px', height: '58px' })
+  })
+
+  it('ignores a half-saved size', () => {
+    expect(loadPositions(memoryStorage({ k: '{"g":{"x":1,"y":2,"width":300}}' }), 'k')).toEqual({ g: { x: 1, y: 2 } })
+  })
+
   it('treats a missing key as nothing saved', () => {
     expect(loadPositions(memoryStorage(), 'k')).toEqual({})
   })

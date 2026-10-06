@@ -1,13 +1,39 @@
 <script setup lang="ts">
+import { useVueFlow } from '@vue-flow/core'
+import { NodeResizer } from '@vue-flow/node-resizer'
 import { Box } from 'lucide-vue-next'
+import { computed } from 'vue'
 
 import type { CodeNodeData } from '../graph/toFlow'
 
-defineProps<{ data: CodeNodeData }>()
+import '@vue-flow/node-resizer/dist/style.css'
+
+const props = defineProps<{ id: string; data: CodeNodeData }>()
+
+const { getNodes } = useVueFlow()
+
+const HEADER = 74
+const MARGIN = 22
+const FALLBACK = { width: 180, height: 110 }
+
+// A class cannot shrink past its methods, so none of them ends up outside.
+const minimum = computed(() => {
+  const methods = getNodes.value.filter((node) => node.parentNode === props.id)
+
+  if (methods.length === 0) {
+    return FALLBACK
+  }
+
+  return {
+    width: Math.ceil(Math.max(...methods.map((node) => node.position.x + node.dimensions.width)) + MARGIN),
+    height: Math.ceil(Math.max(HEADER, ...methods.map((node) => node.position.y + node.dimensions.height)) + MARGIN),
+  }
+})
 </script>
 
 <template>
   <div class="class-group">
+    <NodeResizer :min-width="minimum.width" :min-height="minimum.height" color="var(--accent)" />
     <header class="class-header">
       <span class="icon"><Box :size="18" :stroke-width="1.75" /></span>
       <span class="text">
@@ -19,6 +45,25 @@ defineProps<{ data: CodeNodeData }>()
 </template>
 
 <style>
+/* Resize handles appear when the class is hovered or selected, so they do not clutter the graph. */
+.vue-flow__node-class-group .vue-flow__resize-control {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.vue-flow__node-class-group:hover .vue-flow__resize-control,
+.vue-flow__node-class-group.is-selected .vue-flow__resize-control {
+  opacity: 1;
+}
+
+.vue-flow__resize-control.handle {
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--accent);
+  border-radius: 3px;
+  background: var(--bg);
+}
+
 .class-group {
   width: 100%;
   height: 100%;
