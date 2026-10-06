@@ -1,15 +1,23 @@
 import type { Graph, GraphNode } from './types'
 
 /**
- * The innermost class or method whose source range contains the line.
- * A method wins over its class because its range is narrower.
+ * The innermost node whose source range contains the line.
+ *
+ * Without `parent` the candidates are classes and methods: a method wins over its class because its
+ * range is narrower. With `parent` (a method id) they are the flow nodes of that method, except
+ * start and end, which span the whole method and would otherwise match every line.
  */
-export function nodeAtLine(graph: Graph, line: number): GraphNode | undefined {
+export function nodeAtLine(graph: Graph, line: number, parent?: string): GraphNode | undefined {
   let best: GraphNode | undefined
   let bestSize = Infinity
 
   for (const node of graph.nodes) {
-    if ((node.type !== 'class' && node.type !== 'method') || node.lineStart === null || node.lineEnd === null) {
+    const candidate =
+      parent === undefined
+        ? node.type === 'class' || node.type === 'method'
+        : node.parent === parent && node.type !== 'start' && node.type !== 'end'
+
+    if (!candidate || node.lineStart === null || node.lineEnd === null) {
       continue
     }
 

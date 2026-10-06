@@ -13,10 +13,22 @@ final class OrderService extends BaseService
     public function createOrder(array $data): int
     {
         $this->validate($data);
-        $total = $this->calculateTotal($data);
-        $this->log('order created');
 
-        return $this->orders->save($data, $total);
+        $total = 0.0;
+        foreach ($data['items'] as $item) {
+            if (!$this->inStock($item)) {
+                continue;
+            }
+
+            try {
+                $total += $this->price($item);
+            } catch (PricingException $e) {
+                $this->log('pricing failed');
+                throw $e;
+            }
+        }
+
+        return $this->orders->save($data, self::roundMoney($total));
     }
 
     private function validate(array $data): void
@@ -26,9 +38,14 @@ final class OrderService extends BaseService
         }
     }
 
-    private function calculateTotal(array $data): float
+    private function inStock(array $item): bool
     {
-        return self::roundMoney(array_sum($data));
+        return $item['qty'] > 0;
+    }
+
+    private function price(array $item): float
+    {
+        return $item['qty'] * $item['price'];
     }
 
     private static function roundMoney(float $value): float

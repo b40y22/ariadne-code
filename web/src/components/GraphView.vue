@@ -7,15 +7,22 @@ import { applyPositions, clearPositions, layoutKey, loadPositions, savePositions
 import { theme } from '../theme'
 import ClassGroup from './ClassGroup.vue'
 import CodeNode from './CodeNode.vue'
+import FlowNode from './FlowNode.vue'
 import GraphLegend from './GraphLegend.vue'
 
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
 
-const props = defineProps<{ nodes: Node[]; edges: Edge[]; selectedId: string | null; fileName: string }>()
-const emit = defineEmits<{ select: [id: string] }>()
+const props = defineProps<{
+  nodes: Node[]
+  edges: Edge[]
+  selectedId: string | null
+  fileName: string
+  mode: 'map' | 'flow'
+}>()
+const emit = defineEmits<{ select: [id: string]; open: [id: string] }>()
 
-const { fitView, getNodes, updateNode, onNodeClick, onNodeDragStop, onNodesChange, onNodesInitialized } = useVueFlow()
+const { fitView, getNodes, updateNode, onNodeClick, onNodeDoubleClick, onNodeDragStop, onNodesChange, onNodesInitialized } = useVueFlow()
 
 // Vue Flow owns the node positions from here on. Props only deliver a freshly analyzed graph;
 // selection and dragging must never rebuild nodes from them, or dragged blocks jump back.
@@ -56,6 +63,7 @@ watch(
 )
 
 onNodeClick(({ node }) => emit('select', node.id))
+onNodeDoubleClick(({ node }) => emit('open', node.id))
 const remember = (): void => savePositions(localStorage, layoutKey(props.fileName), getNodes.value)
 
 onNodeDragStop(remember)
@@ -102,9 +110,12 @@ defineExpose({ resetLayout })
       <template #node-code="nodeProps">
         <CodeNode :data="nodeProps.data" />
       </template>
+      <template #node-flow="nodeProps">
+        <FlowNode :data="nodeProps.data" />
+      </template>
       <Background :gap="22" :size="1.3" :pattern-color="theme.dot" />
     </VueFlow>
-    <GraphLegend />
+    <GraphLegend :mode="mode" />
   </div>
 </template>
 
@@ -122,6 +133,27 @@ defineExpose({ resetLayout })
 .ariadne-edge-calls .vue-flow__edge-path {
   stroke: var(--accent);
   filter: drop-shadow(0 0 3px rgba(var(--accent-rgb), 0.45));
+}
+
+/* Method flow: the sequence is quiet, branches and loops are told apart by colour and dash. */
+.flow-edge-plain .vue-flow__edge-path,
+.flow-edge-secondary .vue-flow__edge-path {
+  stroke: var(--muted);
+}
+
+.flow-edge-primary .vue-flow__edge-path {
+  stroke: var(--accent);
+  filter: drop-shadow(0 0 3px rgba(var(--accent-rgb), 0.45));
+}
+
+.flow-edge-backward .vue-flow__edge-path {
+  stroke: var(--dim);
+  stroke-dasharray: 5 5;
+}
+
+.flow-edge-exceptional .vue-flow__edge-path {
+  stroke: var(--danger);
+  stroke-dasharray: 5 5;
 }
 
 .vue-flow__edge-textbg {

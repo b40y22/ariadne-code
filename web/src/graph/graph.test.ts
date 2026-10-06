@@ -105,4 +105,29 @@ describe('nodeAtLine', () => {
   it('returns nothing outside every range', () => {
     expect(nodeAtLine(graph, 99)).toBeUndefined()
   })
+
+  describe('within a method', () => {
+    const scoped: Graph = {
+      nodes: [
+        ...graph.nodes,
+        { ...node('flow:a#1', 'loop', 4, 8), parent: 'method:A::a' },
+        { ...node('flow:a#2', 'call', 6, 6), parent: 'method:A::a' },
+        { ...node('flow:a#3', 'end', 3, 9), parent: 'method:A::a' },
+      ],
+      edges: graph.edges,
+    }
+
+    it('finds the innermost flow node', () => {
+      expect(nodeAtLine(scoped, 6, 'method:A::a')?.id).toBe('flow:a#2')
+      expect(nodeAtLine(scoped, 5, 'method:A::a')?.id).toBe('flow:a#1')
+    })
+
+    it('ignores start and end, which span the whole method', () => {
+      expect(nodeAtLine(scoped, 9, 'method:A::a')).toBeUndefined()
+    })
+
+    it('ignores flow nodes of other methods', () => {
+      expect(nodeAtLine(scoped, 6, 'method:A::b')).toBeUndefined()
+    })
+  })
 })

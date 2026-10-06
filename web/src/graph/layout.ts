@@ -1,11 +1,11 @@
-import type { Edge } from '@vue-flow/core'
+import type { Edge, Node } from '@vue-flow/core'
 import ELK, { type ElkNode } from 'elkjs/lib/elk.bundled.js'
-import type { CodeNode } from './toFlow'
 
 const elk = new ELK()
 
 const NODE_HEIGHT = 58
 const MIN_NODE_WIDTH = 190
+const MAX_NODE_WIDTH = 380
 const CHAR_WIDTH = 8.5
 // Icon, gaps and padding around the title.
 const CHROME = 78
@@ -20,10 +20,18 @@ interface Box {
   height: number
 }
 
-function widthOf(node: CodeNode): number {
+/** A node that shows a title and a subtitle, which is what sizes it. */
+export type LayoutNode = Node & { data: { title: string; subtitle: string } }
+
+export interface LayoutOptions {
+  /** Direction of the main flow. The class map reads left to right, a method flow top to bottom. */
+  direction?: 'RIGHT' | 'DOWN'
+}
+
+function widthOf(node: LayoutNode): number {
   const longest = Math.max(node.data.title.length, node.data.subtitle.length)
 
-  return Math.max(MIN_NODE_WIDTH, Math.round(longest * CHAR_WIDTH + CHROME))
+  return Math.min(MAX_NODE_WIDTH, Math.max(MIN_NODE_WIDTH, Math.round(longest * CHAR_WIDTH + CHROME)))
 }
 
 function collect(node: ElkNode, into: Map<string, Box>): void {
@@ -38,9 +46,10 @@ function collect(node: ElkNode, into: Map<string, Box>): void {
  * inside it, with coordinates relative to the parent, which is what Vue Flow expects.
  * Returns new node objects.
  */
-export async function layout(nodes: CodeNode[], edges: Edge[]): Promise<CodeNode[]> {
-  const kids = new Map<string, CodeNode[]>()
-  const roots: CodeNode[] = []
+export async function layout<T extends LayoutNode>(nodes: T[], edges: Edge[], options: LayoutOptions = {}): Promise<T[]> {
+  const direction = options.direction ?? 'RIGHT'
+  const kids = new Map<string, T[]>()
+  const roots: T[] = []
 
   for (const node of nodes) {
     if (node.parentNode === undefined) {
@@ -50,7 +59,7 @@ export async function layout(nodes: CodeNode[], edges: Edge[]): Promise<CodeNode
     }
   }
 
-  const toElk = (node: CodeNode): ElkNode => {
+  const toElk = (node: T): ElkNode => {
     const children = kids.get(node.id)
 
     if (children === undefined) {
@@ -75,7 +84,7 @@ export async function layout(nodes: CodeNode[], edges: Edge[]): Promise<CodeNode
     id: 'root',
     layoutOptions: {
       'elk.algorithm': 'layered',
-      'elk.direction': 'RIGHT',
+      'elk.direction': direction,
       'elk.hierarchyHandling': 'INCLUDE_CHILDREN',
       'elk.spacing.nodeNode': '36',
       'elk.layered.spacing.nodeNodeBetweenLayers': '80',
@@ -99,6 +108,6 @@ export async function layout(nodes: CodeNode[], edges: Edge[]): Promise<CodeNode
       ...node,
       position: { x: box.x, y: box.y },
       style: { width: `${Math.round(box.width)}px`, height: `${Math.round(box.height)}px` },
-    }
+    } as T
   })
 }

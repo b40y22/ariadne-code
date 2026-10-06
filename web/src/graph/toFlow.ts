@@ -16,15 +16,22 @@ export type CodeNode = Node<CodeNodeData> & { data: CodeNodeData }
 
 const CLASS_MAP_TYPES: ReadonlySet<NodeType> = new Set(['class', 'method', 'unresolved'])
 
+/** "L11–18", or "L9" for a single line, or "" when the node has no location. */
+export function lineRange(node: GraphNode): string {
+  if (node.lineStart === null) {
+    return ''
+  }
+
+  return node.lineStart === node.lineEnd || node.lineEnd === null ? `L${node.lineStart}` : `L${node.lineStart}–${node.lineEnd}`
+}
+
 function describe(node: GraphNode, methodCount: number): CodeNodeData {
   if (node.type === 'class') {
     return { kind: 'class', title: node.name, subtitle: `${methodCount} ${methodCount === 1 ? 'method' : 'methods'}` }
   }
 
   if (node.type === 'method') {
-    const range = node.lineStart === null ? '' : node.lineStart === node.lineEnd ? `L${node.lineStart}` : `L${node.lineStart}–${node.lineEnd}`
-
-    return { kind: 'method', title: `${node.name}()`, subtitle: range }
+    return { kind: 'method', title: `${node.name}()`, subtitle: lineRange(node) }
   }
 
   return { kind: 'unresolved', title: node.name, subtitle: 'not resolved statically' }

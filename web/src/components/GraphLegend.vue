@@ -1,8 +1,19 @@
+<script setup lang="ts">
+defineProps<{ mode: 'map' | 'flow' }>()
+</script>
+
 <template>
-  <ul class="legend" aria-label="Legend">
+  <ul v-if="mode === 'map'" class="legend" aria-label="Legend">
     <li><span class="swatch call" />call</li>
     <li><span class="swatch group" />class</li>
     <li><span class="swatch unresolved" />unresolved</li>
+    <li class="hint">double-click a method to open its flow</li>
+  </ul>
+  <ul v-else class="legend" aria-label="Legend">
+    <li><span class="swatch call" />true / body</li>
+    <li><span class="swatch plain" />next step</li>
+    <li><span class="swatch back" />loop back</li>
+    <li><span class="swatch danger" />exception</li>
   </ul>
 </template>
 
@@ -31,10 +42,26 @@
   gap: 8px;
 }
 
+.legend .hint {
+  color: var(--dim);
+}
+
 .swatch {
   width: 22px;
   height: 0;
   border-top: 2px solid var(--accent);
+}
+
+.swatch.plain {
+  border-top-color: var(--muted);
+}
+
+.swatch.back {
+  border-top: 2px dashed var(--dim);
+}
+
+.swatch.danger {
+  border-top: 2px dashed var(--danger);
 }
 
 .swatch.group {
