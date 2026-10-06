@@ -45,7 +45,6 @@ use PhpParser\Node\Stmt\Return_;
 use PhpParser\Node\Stmt\Switch_;
 use PhpParser\Node\Stmt\TryCatch;
 use PhpParser\Node\Stmt\While_;
-use PhpParser\PrettyPrinter\Standard;
 
 /**
  * Builds the control flow of one method: calls in execution order and the branches between them.
@@ -71,10 +70,6 @@ use PhpParser\PrettyPrinter\Standard;
  */
 final class MethodFlowBuilder
 {
-    private const int MAX_LABEL = 60;
-
-    private const int MAX_BRANCH_LABEL = 24;
-
     private int $counter = 0;
 
     /** @var list<array{head: string|null, breaks: list<FlowExit>}> a switch has no head: `continue` there is a `break` */
@@ -86,7 +81,7 @@ final class MethodFlowBuilder
     /** @var list<FlowExit> */
     private array $toEnd = [];
 
-    private readonly Standard $printer;
+    private readonly FlowLabels $labels;
 
     public function __construct(
         private readonly Graph $graph,
@@ -94,7 +89,7 @@ final class MethodFlowBuilder
         private readonly string $file,
         private readonly string $methodId,
     ) {
-        $this->printer = new Standard();
+        $this->labels = new FlowLabels($reader);
     }
 
     /** The flow of a method or function. Abstract and interface methods have no body, so no flow. */
@@ -155,10 +150,10 @@ final class MethodFlowBuilder
     {
         return match (true) {
             $stmt instanceof If_ => $this->branch($stmt->cond, $stmt->stmts, $stmt->elseifs, $stmt->else, $in),
-            $stmt instanceof While_ => $this->loop('while (' . $this->text($stmt->cond) . ')', $stmt, $stmt->stmts, $in),
-            $stmt instanceof Do_ => $this->loop('do-while (' . $this->text($stmt->cond) . ')', $stmt, $stmt->stmts, $in),
-            $stmt instanceof For_ => $this->loop($this->forLabel($stmt), $stmt, $stmt->stmts, $in),
-            $stmt instanceof Foreach_ => $this->loop($this->foreachLabel($stmt), $stmt, $stmt->stmts, $in),
+            $stmt instanceof While_ => $this->loop('while (' . $this->labels->text($stmt->cond) . ')', $stmt, $stmt->stmts, $in),
+            $stmt instanceof Do_ => $this->loop('do-while (' . $this->labels->text($stmt->cond) . ')', $stmt, $stmt->stmts, $in),
+            $stmt instanceof For_ => $this->loop($this->labels->forLoop($stmt), $stmt, $stmt->stmts, $in),
+            $stmt instanceof Foreach_ => $this->loop($this->labels->foreachLoop($stmt), $stmt, $stmt->stmts, $in),
             $stmt instanceof Switch_ => $this->switch($stmt, $in),
             $stmt instanceof TryCatch => $this->tryCatch($stmt, $in),
             $stmt instanceof Return_ => $this->return($stmt, $in),
@@ -178,7 +173,7 @@ final class MethodFlowBuilder
     private function branch(Expr $cond, array $stmts, array $elseifs, ?Stmt\Else_ $else, array $in): array
     {
         $in = $this->evaluate($cond, $in);
-        $node = $this->add(NodeType::Condition, $this->text($cond), $cond);
+        $node = $this->add(NodeType::Condition, $this->labels->text($cond), $cond);
         $this->connect($in, $node);
 
         $then = $this->stmts($stmts, [new FlowExit($node, 'true')]);
@@ -237,7 +232,7 @@ final class MethodFlowBuilder
 
         foreach ($stmt->catches as $catch) {
             $types = implode('|', array_map(static fn($type) => $type->toString(), $catch->types));
-            $variable = $catch->var !== null ? ' ' . $this->text($catch->var) : '';
+            $variable = $catch->var !== null ? ' ' . $this->labels->text($catch->var) : '';
 
             $node = $this->add(NodeType::Catch_, 'catch (' . $types . $variable . ')', $catch);
             $this->graph->addEdge(new Edge($try, $node, EdgeType::Flow, label: 'exception'));
@@ -263,7 +258,7 @@ final class MethodFlowBuilder
     private function return(Return_ $stmt, array $in): array
     {
         $in = $this->evaluate($stmt, $in);
-        $node = $this->add(NodeType::Return_, $this->keyword('return', $stmt->expr), $stmt);
+        $node = $this->add(NodeType::Return_, $this->labels->keyword('return', $stmt->expr), $stmt);
         $this->connect($in, $node);
         $this->toEnd[] = new FlowExit($node);
 
@@ -278,7 +273,7 @@ final class MethodFlowBuilder
     private function throw(Throw_ $expr, array $in): array
     {
         $in = $this->evaluate($expr->expr, $in);
-        $node = $this->add(NodeType::Throw_, $this->keyword('throw', $expr->expr), $expr);
+        $node = $this->add(NodeType::Throw_, $this->labels->keyword('throw', $expr->expr), $expr);
         $this->connect($in, $node);
 
         if ($this->tries === []) {
@@ -374,9 +369,7 @@ final class MethodFlowBuilder
         $site = $in === [] ? null : $this->reader->read($node);
 
         if ($site !== null) {
-            $step = $this->add(NodeType::Call, $site->label, $node);
-            $this->connect($in, $step);
-            $in = $this->callbacks($node, $step);
+            $in = $this->callbacks($node, $this->step(NodeType::Call, $site->label, $node, $in));
         }
 
         return $in;
@@ -385,11 +378,12 @@ final class MethodFlowBuilder
     /**
      * The steps after a call: the calls inside each closure passed to it, then whatever comes next.
      *
+     * @param list<FlowExit> $after The exits of the call itself.
      * @return list<FlowExit>
      */
-    private function callbacks(AstNode $call, string $step): array
+    private function callbacks(AstNode $call, array $after): array
     {
-        $in = [new FlowExit($step)];
+        $in = $after;
 
         if (!$call instanceof MethodCall && !$call instanceof NullsafeMethodCall && !$call instanceof StaticCall && !$call instanceof FuncCall) {
             return $in;
@@ -439,7 +433,7 @@ final class MethodFlowBuilder
             $in = $this->evaluate($node->expr, $in);
         }
 
-        $step = $this->add(NodeType::Return_, $this->text($node), $node);
+        $step = $this->add(NodeType::Return_, $this->labels->text($node), $node);
         $this->connect($in, $step);
         $this->toEnd[] = new FlowExit($step);
 
@@ -456,10 +450,8 @@ final class MethodFlowBuilder
     private function include(Include_ $node, array $in): array
     {
         $in = $this->evaluate($node->expr, $in);
-        $step = $this->add(NodeType::Call, $this->text($node), $node);
-        $this->connect($in, $step);
 
-        return [new FlowExit($step)];
+        return $this->step(NodeType::Call, $this->labels->text($node), $node, $in);
     }
 
     /**
@@ -472,7 +464,7 @@ final class MethodFlowBuilder
     private function switch(Switch_ $stmt, array $in): array
     {
         $in = $this->evaluate($stmt->cond, $in);
-        $subject = $this->add(NodeType::Condition, 'switch (' . $this->text($stmt->cond) . ')', $stmt->cond);
+        $subject = $this->add(NodeType::Condition, 'switch (' . $this->labels->text($stmt->cond) . ')', $stmt->cond);
         $this->connect($in, $subject);
 
         $this->loops[] = ['head' => null, 'breaks' => []];
@@ -481,7 +473,7 @@ final class MethodFlowBuilder
 
         foreach ($stmt->cases as $case) {
             $hasDefault = $hasDefault || $case->cond === null;
-            $label = $case->cond === null ? 'default' : $this->branchLabel('case ' . $this->text($case->cond));
+            $label = $case->cond === null ? 'default' : $this->labels->branch('case ' . $this->labels->text($case->cond));
 
             // The body is reached by matching the case, or by falling through from the one above.
             $fall = $this->stmts($case->stmts, [new FlowExit($subject, $label), ...$fall]);
@@ -502,7 +494,7 @@ final class MethodFlowBuilder
     private function match(Match_ $node, array $in): array
     {
         $in = $this->evaluate($node->cond, $in);
-        $subject = $this->add(NodeType::Condition, 'match (' . $this->text($node->cond) . ')', $node->cond);
+        $subject = $this->add(NodeType::Condition, 'match (' . $this->labels->text($node->cond) . ')', $node->cond);
         $this->connect($in, $subject);
 
         $out = [];
@@ -510,7 +502,7 @@ final class MethodFlowBuilder
         foreach ($node->arms as $arm) {
             $label = $arm->conds === null
                 ? 'default'
-                : $this->branchLabel(implode(', ', array_map(fn(Expr $cond): string => $this->text($cond), $arm->conds)));
+                : $this->labels->branch(implode(', ', array_map(fn(Expr $cond): string => $this->labels->text($cond), $arm->conds)));
 
             $out = [...$out, ...$this->evaluate($arm->body, [new FlowExit($subject, $label)])];
         }
@@ -528,7 +520,7 @@ final class MethodFlowBuilder
     private function ternary(Ternary $node, array $in): array
     {
         $in = $this->evaluate($node->cond, $in);
-        $condition = $this->add(NodeType::Condition, $this->text($node->cond) . ' ?', $node->cond);
+        $condition = $this->add(NodeType::Condition, $this->labels->text($node->cond) . ' ?', $node->cond);
         $this->connect($in, $condition);
 
         $true = [new FlowExit($condition, 'true')];
@@ -557,7 +549,7 @@ final class MethodFlowBuilder
         }
 
         [$skip, $run] = $labels;
-        $condition = $this->add(NodeType::Condition, $this->text($left) . ' ' . $operator, $left);
+        $condition = $this->add(NodeType::Condition, $this->labels->text($left) . ' ' . $operator, $left);
         $this->connect($in, $condition);
 
         $evaluated = $this->evaluate($right, [new FlowExit($condition, $run)]);
@@ -575,9 +567,7 @@ final class MethodFlowBuilder
     private function flat(AstNode $node, array $in): array
     {
         foreach (FlowCallCollector::collect($node, $this->reader) as [$site, $call]) {
-            $step = $this->add(NodeType::Call, $site->label, $call);
-            $this->connect($in, $step);
-            $in = [new FlowExit($step)];
+            $in = $this->step(NodeType::Call, $site->label, $call, $in);
         }
 
         return $in;
@@ -603,6 +593,21 @@ final class MethodFlowBuilder
                 }
             }
         }
+    }
+
+    /**
+     * A step that follows the given exits, and the exits that leave it.
+     *
+     * @param list<FlowExit> $in
+     *
+     * @return list<FlowExit>
+     */
+    private function step(NodeType $type, string $name, AstNode $at, array $in): array
+    {
+        $node = $this->add($type, $name, $at);
+        $this->connect($in, $node);
+
+        return [new FlowExit($node)];
     }
 
     private function add(NodeType $type, string $name, AstNode $at): string
@@ -638,54 +643,8 @@ final class MethodFlowBuilder
         }
     }
 
-    /**
-     * The label of a `return` or `throw`. When the expression is itself a call, the call is already the step
-     * just before, and repeating it would only show the same line twice, so the keyword stands alone.
-     */
-    private function keyword(string $keyword, ?Expr $expr): string
-    {
-        if ($expr === null || $this->reader->read($expr) !== null) {
-            return $keyword;
-        }
-
-        return $keyword . ' ' . $this->text($expr);
-    }
-
-    /** A branch label has to fit on an edge. */
-    private function branchLabel(string $label): string
-    {
-        return mb_strimwidth($label, 0, self::MAX_BRANCH_LABEL, '…');
-    }
-
     private function depth(?Expr $num): int
     {
         return $num instanceof Int_ ? max(1, $num->value) : 1;
-    }
-
-    private function forLabel(For_ $stmt): string
-    {
-        return 'for (' . $this->list($stmt->init) . '; ' . $this->list($stmt->cond) . '; ' . $this->list($stmt->loop) . ')';
-    }
-
-    /**
-     * @param array<Expr> $exprs
-     */
-    private function list(array $exprs): string
-    {
-        return implode(', ', array_map(fn(Expr $expr): string => $this->text($expr), $exprs));
-    }
-
-    private function foreachLabel(Foreach_ $stmt): string
-    {
-        $key = $stmt->keyVar !== null ? $this->text($stmt->keyVar) . ' => ' : '';
-
-        return 'foreach (' . $this->text($stmt->expr) . ' as ' . $key . ($stmt->byRef ? '&' : '') . $this->text($stmt->valueVar) . ')';
-    }
-
-    private function text(Expr $expr): string
-    {
-        $text = (string) preg_replace('/\s+/', ' ', $this->printer->prettyPrintExpr($expr));
-
-        return mb_strimwidth($text, 0, self::MAX_LABEL, '…');
     }
 }
