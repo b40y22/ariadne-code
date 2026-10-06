@@ -43,7 +43,7 @@ Calls the analyzer cannot trace to a declaration (builtins, calls on other objec
 
 **Execution replay:** below a method flow, the *Execution replay* panel walks through the method step by step. **→** takes the next step (or pick a branch when the code forks), **←** goes back, and a click on a log entry jumps to that step. The path walked so far lights up in the graph, and the current step is highlighted in the source code. It is static: no code runs, you choose the branches.
 
-![Execution replay](docs/screenshot-replay.png)
+![Execution replay: one pass through the loop, then out through DB::transaction to the end](docs/replay.gif)
 
 The API is a single endpoint, `POST /api/analyze` with `{"code": "...", "file": "A.php"}`, answering with the Code Graph JSON. Submitted code is only parsed, never executed or stored, and requests are limited to 1 MB.
 
