@@ -51,7 +51,9 @@ use PhpParser\PrettyPrinter\Standard;
  * list of {@see FlowExit}s, and every new node is attached to all of them, which is how branches merge.
  *
  * Known simplifications, kept explicit rather than guessed:
- * - `switch`/`match` are not branched; their calls appear in source order as plain steps.
+ * - `switch` branches per `case` (labelled with the case value) and falls through like PHP when a case does not
+ *   `break`; `match` branches per arm. Calls inside a `case` value are not steps. A `continue` that targets a
+ *   `switch` behaves like `break`, as in PHP.
  * - Expressions branch where PHP does: `?:`, `??`, `??=`, and `&&`/`||` when the right side calls or throws.
  *   A `throw` inside an expression (`$x ?? throw new E()`) leaves the method like a `throw` statement.
  * - Calls in loop headers (`while ($this->next())`) are not steps, as they run on every iteration.
@@ -67,9 +69,11 @@ final class MethodFlowBuilder
 {
     private const int MAX_LABEL = 60;
 
+    private const int MAX_BRANCH_LABEL = 24;
+
     private int $counter = 0;
 
-    /** @var list<array{head: string, breaks: list<FlowExit>}> */
+    /** @var list<array{head: string|null, breaks: list<FlowExit>}> a switch has no head: `continue` there is a `break` */
     private array $loops = [];
 
     /** @var list<list<FlowExit>> throws inside a try that has catch blocks, one entry per open try */
@@ -134,6 +138,7 @@ final class MethodFlowBuilder
             $stmt instanceof Do_ => $this->loop('do-while (' . $this->text($stmt->cond) . ')', $stmt, $stmt->stmts, $in),
             $stmt instanceof For_ => $this->loop($this->forLabel($stmt), $stmt, $stmt->stmts, $in),
             $stmt instanceof Foreach_ => $this->loop($this->foreachLabel($stmt), $stmt, $stmt->stmts, $in),
+            $stmt instanceof Switch_ => $this->switch($stmt, $in),
             $stmt instanceof TryCatch => $this->tryCatch($stmt, $in),
             $stmt instanceof Return_ => $this->return($stmt, $in),
             $stmt instanceof Break_ => $this->break($stmt, $in),
@@ -290,7 +295,13 @@ final class MethodFlowBuilder
         $index = count($this->loops) - $this->depth($stmt->num);
 
         if (isset($this->loops[$index])) {
-            $this->connect($in, $this->loops[$index]['head'], 'continue');
+            $head = $this->loops[$index]['head'];
+
+            if ($head === null) {
+                $this->loops[$index]['breaks'] = [...$this->loops[$index]['breaks'], ...$in];
+            } else {
+                $this->connect($in, $head, 'continue');
+            }
         }
 
         return [];
@@ -318,12 +329,9 @@ final class MethodFlowBuilder
             return $in;
         }
 
-        if ($node instanceof Switch_ || $node instanceof Match_) {
-            return $this->flat($node, $in);
-        }
-
         $branched = match (true) {
             $node instanceof Throw_ => $this->throw($node, $in),
+            $node instanceof Match_ => $this->match($node, $in),
             $node instanceof Ternary => $this->ternary($node, $in),
             $node instanceof Coalesce => $this->guarded($node->left, $node->right, '??', ['set', 'null'], $in),
             $node instanceof CoalesceAssign => $this->guarded($node->var, $node->expr, '??=', ['set', 'null'], $in),
@@ -393,6 +401,62 @@ final class MethodFlowBuilder
         }
 
         return $in;
+    }
+
+    /**
+     * `switch`: one branch per case, falling through to the next case until a `break`.
+     *
+     * @param list<FlowExit> $in
+     *
+     * @return list<FlowExit>
+     */
+    private function switch(Switch_ $stmt, array $in): array
+    {
+        $in = $this->evaluate($stmt->cond, $in);
+        $subject = $this->add(NodeType::Condition, 'switch (' . $this->text($stmt->cond) . ')', $stmt->cond);
+        $this->connect($in, $subject);
+
+        $this->loops[] = ['head' => null, 'breaks' => []];
+        $fall = [];
+        $hasDefault = false;
+
+        foreach ($stmt->cases as $case) {
+            $hasDefault = $hasDefault || $case->cond === null;
+            $label = $case->cond === null ? 'default' : $this->branchLabel('case ' . $this->text($case->cond));
+
+            // The body is reached by matching the case, or by falling through from the one above.
+            $fall = $this->stmts($case->stmts, [new FlowExit($subject, $label), ...$fall]);
+        }
+
+        $frame = array_pop($this->loops);
+
+        return [...$fall, ...$frame['breaks'], ...($hasDefault ? [] : [new FlowExit($subject, 'no match')])];
+    }
+
+    /**
+     * `match`: one branch per arm, each arm an expression whose value is the result.
+     *
+     * @param list<FlowExit> $in
+     *
+     * @return list<FlowExit>
+     */
+    private function match(Match_ $node, array $in): array
+    {
+        $in = $this->evaluate($node->cond, $in);
+        $subject = $this->add(NodeType::Condition, 'match (' . $this->text($node->cond) . ')', $node->cond);
+        $this->connect($in, $subject);
+
+        $out = [];
+
+        foreach ($node->arms as $arm) {
+            $label = $arm->conds === null
+                ? 'default'
+                : $this->branchLabel(implode(', ', array_map(fn(Expr $cond): string => $this->text($cond), $arm->conds)));
+
+            $out = [...$out, ...$this->evaluate($arm->body, [new FlowExit($subject, $label)])];
+        }
+
+        return $out;
     }
 
     /**
@@ -508,6 +572,12 @@ final class MethodFlowBuilder
         foreach ($from as $exit) {
             $this->graph->addEdge(new Edge($exit->from, $to, EdgeType::Flow, label: $exit->label ?? $default));
         }
+    }
+
+    /** A branch label has to fit on an edge. */
+    private function branchLabel(string $label): string
+    {
+        return mb_strimwidth($label, 0, self::MAX_BRANCH_LABEL, '…');
     }
 
     private function depth(?Expr $num): int

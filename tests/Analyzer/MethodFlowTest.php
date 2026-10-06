@@ -249,18 +249,6 @@ final class MethodFlowTest extends TestCase
     }
 
     #[Test]
-    public function switch_calls_appear_as_plain_steps_without_branching(): void
-    {
-        $flow = $this->flow('function a($x) { switch ($x) { case 1: $this->b(); break; default: $this->c(); } }');
-
-        self::assertSame([
-            'start -> call $this->b',
-            'call $this->b -> call $this->c',
-            'call $this->c -> end',
-        ], $flow);
-    }
-
-    #[Test]
     public function long_labels_are_truncated(): void
     {
         $graph = $this->analyze('class A { function a($x) { if ($x === "' . str_repeat('a', 100) . '") {} } }');
@@ -557,6 +545,142 @@ final class MethodFlowTest extends TestCase
         $flow = $this->flow('function a() { $f = function () { $this->x(); }; $g = fn () => $this->y(); }');
 
         self::assertSame(['start -> end'], $flow);
+    }
+
+    #[Test]
+    public function a_switch_branches_per_case_and_merges_after_the_breaks(): void
+    {
+        $flow = $this->flow('function a($x) { switch ($x) { case 1: $this->b(); break; case 2: $this->c(); break; default: $this->d(); } $this->e(); }');
+
+        self::assertSame([
+            'start -> condition switch ($x)',
+            'condition switch ($x) -> call $this->b [case 1]',
+            'condition switch ($x) -> call $this->c [case 2]',
+            'condition switch ($x) -> call $this->d [default]',
+            'call $this->d -> call $this->e',
+            'call $this->b -> call $this->e',
+            'call $this->c -> call $this->e',
+            'call $this->e -> end',
+        ], $flow);
+    }
+
+    #[Test]
+    public function a_case_without_break_falls_through_to_the_next(): void
+    {
+        $flow = $this->flow('function a($x) { switch ($x) { case 1: $this->a1(); case 2: $this->b1(); break; } }');
+
+        self::assertContains('condition switch ($x) -> call $this->a1 [case 1]', $flow);
+        self::assertContains('condition switch ($x) -> call $this->b1 [case 2]', $flow);
+        self::assertContains('call $this->a1 -> call $this->b1', $flow);
+    }
+
+    #[Test]
+    public function stacked_empty_cases_share_one_body(): void
+    {
+        $flow = $this->flow('function a($x) { switch ($x) { case 1: case 2: $this->a1(); break; } }');
+
+        self::assertContains('condition switch ($x) -> call $this->a1 [case 1]', $flow);
+        self::assertContains('condition switch ($x) -> call $this->a1 [case 2]', $flow);
+    }
+
+    #[Test]
+    public function a_switch_without_default_can_match_nothing(): void
+    {
+        $flow = $this->flow('function a($x) { switch ($x) { case 1: $this->a1(); break; } $this->after(); }');
+
+        self::assertContains('condition switch ($x) -> call $this->after [no match]', $flow);
+    }
+
+    #[Test]
+    public function a_switch_with_default_cannot_match_nothing(): void
+    {
+        $flow = $this->flow('function a($x) { switch ($x) { default: $this->a1(); } }');
+
+        self::assertNotContains('condition switch ($x) -> end [no match]', $flow);
+        self::assertSame([
+            'start -> condition switch ($x)',
+            'condition switch ($x) -> call $this->a1 [default]',
+            'call $this->a1 -> end',
+        ], $flow);
+    }
+
+    #[Test]
+    public function return_inside_a_case_leaves_the_method(): void
+    {
+        $flow = $this->flow('function a($x) { switch ($x) { case 1: return 1; default: $this->d(); } }');
+
+        self::assertContains('condition switch ($x) -> return return 1 [case 1]', $flow);
+        self::assertContains('return return 1 -> end', $flow);
+        self::assertNotContains('return return 1 -> call $this->d', $flow);
+    }
+
+    #[Test]
+    public function break_two_leaves_the_loop_around_the_switch(): void
+    {
+        $flow = $this->flow('function a($x, $y) { while ($x) { switch ($y) { case 1: break 2; default: $this->d(); } $this->after(); } }');
+
+        self::assertContains('condition switch ($y) -> end [case 1]', $flow);
+        self::assertContains('call $this->after -> loop while ($x) [next]', $flow);
+    }
+
+    #[Test]
+    public function continue_targeting_a_switch_acts_like_break(): void
+    {
+        $flow = $this->flow('function a($x) { switch ($x) { case 1: $this->a1(); continue; case 2: $this->b1(); } $this->after(); }');
+
+        self::assertContains('call $this->a1 -> call $this->after', $flow);
+        self::assertNotContains('call $this->a1 -> call $this->b1', $flow);
+    }
+
+    #[Test]
+    public function a_continue_two_in_a_switch_returns_to_the_loop(): void
+    {
+        $flow = $this->flow('function a($x, $y) { while ($x) { switch ($y) { case 1: continue 2; } } }');
+
+        self::assertContains('condition switch ($y) -> loop while ($x) [case 1]', $flow);
+    }
+
+    #[Test]
+    public function a_match_branches_per_arm_and_joins_into_the_result(): void
+    {
+        $flow = $this->flow('function a($x) { return match ($x) { 1, 2 => $this->b(), default => $this->c() }; }');
+        $return = 'return return match ($x) { 1, 2 => $this->b(), default => $this->c(), }';
+
+        self::assertSame([
+            'start -> condition match ($x)',
+            'condition match ($x) -> call $this->b [1, 2]',
+            'condition match ($x) -> call $this->c [default]',
+            'call $this->b -> ' . $return,
+            'call $this->c -> ' . $return,
+            $return . ' -> end',
+        ], $flow);
+    }
+
+    #[Test]
+    public function a_throwing_match_arm_leaves_the_method(): void
+    {
+        $flow = $this->flow('function a($x) { $v = match ($x) { 1 => $this->a1(), default => throw new \E() }; $this->after(); }');
+
+        self::assertContains('condition match ($x) -> throw throw new \E() [default]', $flow);
+        self::assertContains('throw throw new \E() -> end', $flow);
+        self::assertContains('call $this->a1 -> call $this->after', $flow);
+        self::assertNotContains('throw throw new \E() -> call $this->after', $flow);
+    }
+
+    #[Test]
+    public function long_case_labels_are_shortened_to_fit_an_edge(): void
+    {
+        $flow = $this->flow('function a($x) { switch ($x) { case "' . str_repeat('v', 60) . '": $this->a1(); } }');
+
+        $label = '';
+
+        foreach ($flow as $edge) {
+            if (str_contains($edge, 'call $this->a1 [')) {
+                $label = $edge;
+            }
+        }
+
+        self::assertMatchesRegularExpression('/\[case "v+…\]$/u', $label);
     }
 
     /**
