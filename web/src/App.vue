@@ -11,7 +11,7 @@ import { useReplay } from './composables/useReplay'
 import { layout } from './graph/layout'
 import { nodeAtLine } from './graph/lookup'
 import { toClassMap } from './graph/toFlow'
-import { layoutEdges, toMethodFlow } from './graph/toMethodFlow'
+import { countBuiltins, layoutEdges, toMethodFlow } from './graph/toMethodFlow'
 import type { Graph } from './graph/types'
 import { SAMPLE_CODE, SAMPLE_FILE } from './sample'
 import { DEFAULT_PANEL } from './panel'
@@ -35,6 +35,8 @@ const { path, flowData, visited, shownEdges, choices, atEnd, takeExit, back, res
 // Unresolved calls are hidden on the class map until asked for: there are often more of them than real nodes.
 const UNRESOLVED_KEY = 'ariadne:show-unresolved'
 const showUnresolved = ref(readStored(UNRESOLVED_KEY) === '1')
+const BUILTINS_KEY = 'ariadne:show-builtins'
+const showBuiltins = ref(readStored(BUILTINS_KEY) === '1')
 const unresolvedCount = computed(() => graph.value?.nodes.filter((node) => node.type === 'unresolved').length ?? 0)
 
 onMounted(() => window.addEventListener('hashchange', onHashChange))
@@ -49,7 +51,8 @@ const flowMethodId = computed(() => (view.value.kind === 'flow' ? view.value.met
 // The class map keeps one layout with unresolved calls and one without, since they place different nodes.
 const layoutId = computed(() => {
   if (flowMethodId.value !== undefined) {
-    return `${fileName.value}#${flowMethodId.value}`
+    // Hiding builtins removes nodes, so the two flows keep separate layouts.
+    return `${fileName.value}#${flowMethodId.value}${showBuiltins.value ? '#builtins' : ''}`
   }
 
   return showUnresolved.value ? `${fileName.value}#unresolved` : fileName.value
@@ -60,6 +63,8 @@ const selectedMethodId = computed(() => {
 
   return node !== undefined && HAS_FLOW.has(node.type) ? node.id : undefined
 })
+
+const builtinCount = computed(() => (graph.value !== null && flowMethodId.value !== undefined ? countBuiltins(graph.value, flowMethodId.value) : 0))
 
 const breadcrumb = computed(() => {
   const methodId = flowMethodId.value
@@ -94,7 +99,7 @@ function syncHash(next: View): void {
 /** Lays out and shows a view of the graph. Returns false, leaving the current view, when it cannot be shown. */
 async function show(result: Graph, next: View): Promise<boolean> {
   if (next.kind === 'flow') {
-    const flow = toMethodFlow(result, next.methodId)
+    const flow = toMethodFlow(result, next.methodId, { includeBuiltins: showBuiltins.value })
 
     if (flow.nodes.length === 0) {
       error.value = 'This method has no body, so there is no flow to show.'
@@ -177,6 +182,15 @@ async function toggleUnresolved(): Promise<void> {
   }
 }
 
+async function toggleBuiltins(): Promise<void> {
+  showBuiltins.value = !showBuiltins.value
+  writeStored(BUILTINS_KEY, showBuiltins.value ? '1' : '0')
+
+  if (graph.value !== null && view.value.kind === 'flow') {
+    await show(graph.value, view.value)
+  }
+}
+
 async function backToMap(): Promise<void> {
   if (graph.value !== null) {
     error.value = null
@@ -233,6 +247,15 @@ onMounted(run)
       </button>
       <template v-if="breadcrumb">
         <button type="button" class="button" @click="backToMap">← Class map</button>
+        <button
+          type="button"
+          class="button toggle"
+          :aria-pressed="showBuiltins"
+          :title="'Common pure functions such as count, trim and array_merge'"
+          @click="toggleBuiltins"
+        >
+          Builtins ({{ builtinCount }})
+        </button>
         <span class="crumbs">
           <template v-if="breadcrumb.cls"><span class="crumb-class">{{ breadcrumb.cls }}</span> › </template>{{ breadcrumb.method }}
         </span>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { flowEdgeClass, isBackward, layoutEdges, toMethodFlow } from './toMethodFlow'
+import { bypass, countBuiltins, flowEdgeClass, isBackward, layoutEdges, toMethodFlow } from './toMethodFlow'
 import type { Graph, GraphEdge, GraphNode } from './types'
 
 const M = 'method:A::a'
@@ -150,5 +150,88 @@ describe('flowEdgeClass', () => {
     ['throw', 'flow-edge-exceptional'],
   ])('maps %s to %s', (label, expected) => {
     expect(flowEdgeClass(label)).toContain(expected)
+  })
+})
+
+describe('builtins', () => {
+  // start -> b1 (builtin) -> call -> b2 (builtin) -> end, with a condition in front of the first builtin
+  const withBuiltins: Graph = {
+    nodes: [
+      { id: M, type: 'method', name: 'a', file: 'A.php', lineStart: 1, lineEnd: 9, parent: null },
+      flowNode(1, 'start', 'start', 1, 9),
+      flowNode(2, 'condition', '$x', 2),
+      flowNode(3, 'builtin', 'count', 3),
+      flowNode(4, 'call', '$this->work', 4),
+      flowNode(5, 'builtin', 'trim', 5),
+      flowNode(6, 'end', 'end', 1, 9),
+    ],
+    edges: [flow(1, 2), flow(2, 3, 'true'), flow(3, 4), flow(4, 5), flow(5, 6), flow(2, 6, 'false')],
+  }
+
+  it('shows them by default', () => {
+    expect(toMethodFlow(withBuiltins, M).nodes.map((n) => n.data.kind)).toContain('builtin')
+  })
+
+  it('counts them', () => {
+    expect(countBuiltins(withBuiltins, M)).toBe(2)
+  })
+
+  it('removes the hidden steps and joins their neighbours', () => {
+    const { nodes, edges } = toMethodFlow(withBuiltins, M, { includeBuiltins: false })
+
+    expect(nodes.map((n) => n.data.title)).toEqual(['Start', '$x', '$this->work', 'End'])
+    expect(edges.map((e) => `${e.source.split('#')[1]}>${e.target.split('#')[1]}${e.label ? ` [${e.label}]` : ''}`)).toEqual([
+      '1>2',
+      '2>4 [true]',
+      '4>6',
+      '2>6 [false]',
+    ])
+  })
+
+  it('keeps every edge pointing at a node that exists', () => {
+    const { nodes, edges } = toMethodFlow(withBuiltins, M, { includeBuiltins: false })
+    const ids = new Set(nodes.map((n) => n.id))
+
+    expect(edges.every((e) => ids.has(e.source) && ids.has(e.target))).toBe(true)
+  })
+
+  it('gives every joined edge a unique id', () => {
+    const { edges } = toMethodFlow(withBuiltins, M, { includeBuiltins: false })
+
+    expect(new Set(edges.map((e) => e.id)).size).toBe(edges.length)
+  })
+})
+
+describe('bypass', () => {
+  const e = (from: string, to: string, label: string | null = null) => ({ from, to, label })
+
+  it('passes through a chain of hidden nodes', () => {
+    expect(bypass([e('a', 'h1'), e('h1', 'h2'), e('h2', 'b')], new Set(['h1', 'h2']))).toEqual([e('a', 'b')])
+  })
+
+  it('keeps the first label found on the way', () => {
+    expect(bypass([e('a', 'h', 'true'), e('h', 'b')], new Set(['h']))).toEqual([e('a', 'b', 'true')])
+    expect(bypass([e('a', 'h'), e('h', 'b', 'next')], new Set(['h']))).toEqual([e('a', 'b', 'next')])
+    expect(bypass([e('a', 'h', 'true'), e('h', 'b', 'next')], new Set(['h']))).toEqual([e('a', 'b', 'true')])
+  })
+
+  it('follows every way out of a hidden node', () => {
+    expect(bypass([e('a', 'h'), e('h', 'b', 'x'), e('h', 'c', 'y')], new Set(['h']))).toEqual([e('a', 'b', 'x'), e('a', 'c', 'y')])
+  })
+
+  it('drops an edge that would loop a node onto itself', () => {
+    expect(bypass([e('loop', 'h', 'body'), e('h', 'loop', 'next')], new Set(['h']))).toEqual([])
+  })
+
+  it('does not repeat an edge two paths both produce', () => {
+    expect(bypass([e('a', 'h1'), e('a', 'h2'), e('h1', 'b'), e('h2', 'b')], new Set(['h1', 'h2']))).toEqual([e('a', 'b')])
+  })
+
+  it('survives a cycle made only of hidden nodes', () => {
+    expect(bypass([e('a', 'h1'), e('h1', 'h2'), e('h2', 'h1')], new Set(['h1', 'h2']))).toEqual([])
+  })
+
+  it('leaves edges between visible nodes alone', () => {
+    expect(bypass([e('a', 'b', 'true')], new Set(['h']))).toEqual([e('a', 'b', 'true')])
   })
 })

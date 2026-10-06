@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Handle, Position } from '@vue-flow/core'
-import { Flag, GitBranch, Play, Repeat, Shield, ShieldAlert, ShieldCheck, TriangleAlert, Undo2, Zap } from 'lucide-vue-next'
+import { Flag, GitBranch, Play, Repeat, Shield, ShieldAlert, ShieldCheck, TriangleAlert, Undo2, Wrench, Zap } from 'lucide-vue-next'
 import { computed } from 'vue'
 
 import type { FlowKind, FlowNodeData } from '../graph/toMethodFlow'
@@ -11,6 +11,7 @@ const ICONS = {
   start: Play,
   end: Flag,
   call: Zap,
+  builtin: Wrench,
   condition: GitBranch,
   loop: Repeat,
   try: Shield,
@@ -94,6 +95,22 @@ const icon = computed(() => ICONS[props.data.kind])
 .flow-node.kind-call .icon {
   background: rgba(var(--accent-rgb), 0.1);
   color: var(--accent);
+}
+
+/* A builtin is a quiet step: present, but it must not compete with the calls that matter. */
+.flow-node.kind-builtin {
+  border-style: dashed;
+  background: transparent;
+}
+
+.flow-node.kind-builtin .icon {
+  background: transparent;
+  color: var(--dim);
+}
+
+.flow-node.kind-builtin .title {
+  color: var(--muted);
+  font-weight: 500;
 }
 
 /* Control flow: structure, not action. */

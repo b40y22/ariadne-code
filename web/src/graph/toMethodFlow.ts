@@ -3,7 +3,7 @@ import { theme } from '../theme'
 import { lineRange } from './toFlow'
 import type { Graph, NodeType } from './types'
 
-export type FlowKind = 'start' | 'end' | 'call' | 'condition' | 'loop' | 'try' | 'catch' | 'finally' | 'return' | 'throw'
+export type FlowKind = 'start' | 'end' | 'call' | 'builtin' | 'condition' | 'loop' | 'try' | 'catch' | 'finally' | 'return' | 'throw'
 
 /** What the `flow` node component renders. */
 export interface FlowNodeData {
@@ -19,6 +19,7 @@ const FLOW_KINDS: ReadonlySet<NodeType> = new Set<NodeType>([
   'start',
   'end',
   'call',
+  'builtin',
   'condition',
   'loop',
   'try',
@@ -87,17 +88,80 @@ function edgeColor(label: string | null): string {
   return theme.muted
 }
 
+interface FlowEdgeSpec {
+  from: string
+  to: string
+  label: string | null
+}
+
+/**
+ * Removes the hidden nodes from a flow and joins their neighbours, so the path through a hidden step is
+ * still one path. The branch label of the first labelled edge on the way is kept: `true`, then a hidden call,
+ * then the next step stays "true".
+ */
+export function bypass(edges: readonly FlowEdgeSpec[], hidden: ReadonlySet<string>): FlowEdgeSpec[] {
+  const out = new Map<string, FlowEdgeSpec[]>()
+
+  for (const edge of edges) {
+    out.set(edge.from, [...(out.get(edge.from) ?? []), edge])
+  }
+
+  const result: FlowEdgeSpec[] = []
+  const seen = new Set<string>()
+
+  const follow = (from: string, node: string, label: string | null, path: ReadonlySet<string>): void => {
+    if (!hidden.has(node)) {
+      const key = `${from}>${node}>${label ?? ''}`
+
+      if (from !== node && !seen.has(key)) {
+        seen.add(key)
+        result.push({ from, to: node, label })
+      }
+
+      return
+    }
+
+    // A cycle made only of hidden nodes has no way out to show.
+    if (path.has(node)) {
+      return
+    }
+
+    for (const next of out.get(node) ?? []) {
+      follow(from, next.to, label ?? next.label, new Set([...path, node]))
+    }
+  }
+
+  for (const edge of edges) {
+    if (!hidden.has(edge.from)) {
+      follow(edge.from, edge.to, edge.label, new Set())
+    }
+  }
+
+  return result
+}
+
+export interface FlowOptions {
+  /** Show the steps for common pure functions (`count`, `trim`...). They are noise more often than not. */
+  includeBuiltins?: boolean
+}
+
+/** How many steps of a method are builtins, that is, how many the toggle would reveal. */
+export function countBuiltins(graph: Graph, methodId: string): number {
+  return graph.nodes.filter((node) => node.parent === methodId && node.type === 'builtin').length
+}
+
 /**
  * The control flow of one method: its calls, branches, loops and exits in execution order.
  * Returns nothing for a method without a body (abstract or interface methods).
  */
-export function toMethodFlow(graph: Graph, methodId: string): { nodes: FlowNode[]; edges: Edge[] } {
+export function toMethodFlow(graph: Graph, methodId: string, options: FlowOptions = {}): { nodes: FlowNode[]; edges: Edge[] } {
+  const includeBuiltins = options.includeBuiltins ?? true
   const owner = graph.nodes.find((node) => node.id === methodId)
   // A script is named after its file, which is not something that can be called.
   const entry = owner?.type === 'script' ? (owner.name) : `${owner?.name ?? ''}()`
 
   const nodes: FlowNode[] = graph.nodes
-    .filter((node) => node.parent === methodId && FLOW_KINDS.has(node.type))
+    .filter((node) => node.parent === methodId && FLOW_KINDS.has(node.type) && (includeBuiltins || node.type !== 'builtin'))
     .map((node) => {
       const kind = node.type as FlowKind
 
@@ -115,9 +179,13 @@ export function toMethodFlow(graph: Graph, methodId: string): { nodes: FlowNode[
     })
 
   const known = new Set(nodes.map((node) => node.id))
+  const hidden = new Set(graph.nodes.filter((node) => node.parent === methodId && node.type === 'builtin' && !includeBuiltins).map((node) => node.id))
 
-  const edges: Edge[] = graph.edges
-    .filter((edge) => edge.type === 'flow' && known.has(edge.from) && known.has(edge.to))
+  const specs: FlowEdgeSpec[] = graph.edges
+    .filter((edge) => edge.type === 'flow' && (known.has(edge.from) || hidden.has(edge.from)) && (known.has(edge.to) || hidden.has(edge.to)))
+    .map((edge) => ({ from: edge.from, to: edge.to, label: edge.label }))
+
+  const edges: Edge[] = (hidden.size === 0 ? specs : bypass(specs, hidden))
     .map((edge, index) => {
       // A loop-back keeps its label (a `continue` after `true` still says "true") but is drawn as a loop-back.
       const backward = isBackward(edge.from, edge.to)

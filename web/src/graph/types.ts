@@ -9,6 +9,7 @@ export type NodeType =
   | 'start'
   | 'end'
   | 'call'
+  | 'builtin'
   | 'condition'
   | 'loop'
   | 'try'
