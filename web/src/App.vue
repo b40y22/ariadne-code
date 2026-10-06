@@ -101,8 +101,14 @@ function onKey(event: KeyboardEvent): void {
   }
 }
 
-onMounted(() => window.addEventListener('keydown', onKey))
-onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
+onMounted(() => {
+  window.addEventListener('keydown', onKey)
+  window.addEventListener('hashchange', onHashChange)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', onKey)
+  window.removeEventListener('hashchange', onHashChange)
+})
 
 const flowMethodId = computed(() => (view.value.kind === 'flow' ? view.value.methodId : undefined))
 
@@ -202,6 +208,23 @@ async function run(): Promise<void> {
     error.value = failure instanceof AnalyzeError ? failure.message : 'Unexpected error while analyzing.'
   } finally {
     loading.value = false
+  }
+}
+
+const sameView = (a: View, b: View): boolean => a.kind === b.kind && (a.kind === 'map' || (b.kind === 'flow' && a.methodId === b.methodId))
+
+/** Pasting a link or using the browser's back and forward buttons changes only the hash; follow it. */
+async function onHashChange(): Promise<void> {
+  const wanted = viewFromHash()
+
+  if (graph.value === null || sameView(wanted, view.value)) {
+    return
+  }
+
+  if (wanted.kind === 'flow') {
+    await openFlow(wanted.methodId)
+  } else {
+    await backToMap()
   }
 }
 
