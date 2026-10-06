@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Edge, Node } from '@vue-flow/core'
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, shallowRef } from 'vue'
 
 import { AnalyzeError, analyze } from './api'
 import CodeEditor, { type Highlight } from './components/CodeEditor.vue'
@@ -10,12 +10,16 @@ import { nodeAtLine } from './graph/lookup'
 import { toClassMap } from './graph/toFlow'
 import type { Graph } from './graph/types'
 import { SAMPLE_CODE, SAMPLE_FILE } from './sample'
+import { clampSplit, DEFAULT_SPLIT, splitFromPointer } from './split'
 
 const code = ref(SAMPLE_CODE)
 const fileName = ref(SAMPLE_FILE)
 const graph = ref<Graph | null>(null)
-const nodes = ref<Node[]>([])
-const edges = ref<Edge[]>([])
+const nodes = shallowRef<Node[]>([])
+const allEdges = shallowRef<Edge[]>([])
+const showDeclares = ref(false)
+// Declarations are drawn only on request: they cut across the call flow that the layout follows.
+const edges = computed<Edge[]>(() => (showDeclares.value ? allEdges.value : allEdges.value.filter(isCall)))
 const selected = ref<{ id: string; reveal: boolean } | null>(null)
 const error = ref<string | null>(null)
 const loading = ref(false)
@@ -31,6 +35,8 @@ const highlight = computed<Highlight | null>(() => {
   return { start: node.lineStart, end: node.lineEnd, reveal: selected.value?.reveal ?? false }
 })
 
+const isCall = (edge: Edge): boolean => edge.class?.toString().includes('ariadne-edge-calls') ?? false
+
 async function run(): Promise<void> {
   loading.value = true
   error.value = null
@@ -39,8 +45,8 @@ async function run(): Promise<void> {
     const result = await analyze(code.value, fileName.value)
     const map = toClassMap(result)
 
-    nodes.value = await layout(map.nodes, map.edges)
-    edges.value = map.edges
+    nodes.value = await layout(map.nodes, map.edges.filter(isCall))
+    allEdges.value = map.edges
     graph.value = result
     selected.value = null
   } catch (failure) {
@@ -74,13 +80,58 @@ function onCursorLine(line: number): void {
   }
 }
 
+const SPLIT_KEY = 'ariadne:split'
+const split = ref(clampSplit(Number(localStorage.getItem(SPLIT_KEY) ?? DEFAULT_SPLIT)))
+const panes = ref<HTMLElement>()
+let resizing = false
+
+function startResize(event: PointerEvent): void {
+  resizing = true
+  ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
+}
+
+function onResize(event: PointerEvent): void {
+  if (!resizing || !panes.value) {
+    return
+  }
+
+  const box = panes.value.getBoundingClientRect()
+  split.value = splitFromPointer(event.clientX, box.left, box.width)
+}
+
+function endResize(): void {
+  if (!resizing) {
+    return
+  }
+
+  resizing = false
+  saveSplit()
+}
+
+function nudgeSplit(event: KeyboardEvent): void {
+  const step = event.key === 'ArrowLeft' ? -2 : event.key === 'ArrowRight' ? 2 : 0
+
+  if (step !== 0) {
+    split.value = clampSplit(split.value + step)
+    saveSplit()
+  }
+}
+
+function saveSplit(): void {
+  try {
+    localStorage.setItem(SPLIT_KEY, String(split.value))
+  } catch {
+    // The split just won't be remembered.
+  }
+}
+
 onMounted(run)
 </script>
 
 <template>
   <div class="app">
     <header class="toolbar">
-      <strong class="title">Ariadne Code</strong>
+      <strong class="title"><span class="dot" />Ariadne Code</strong>
       <label class="button">
         Open .php
         <input type="file" accept=".php,text/x-php" hidden @change="onFile" />
@@ -91,12 +142,21 @@ onMounted(run)
       <button type="button" class="button" :disabled="graph === null" @click="graphView?.resetLayout()">
         Reset layout
       </button>
+      <button
+        type="button"
+        class="button toggle"
+        :aria-pressed="showDeclares"
+        :disabled="graph === null"
+        @click="showDeclares = !showDeclares"
+      >
+        Declarations
+      </button>
       <span class="file">{{ fileName }}</span>
       <span v-if="error" class="error" role="alert">{{ error }}</span>
     </header>
 
-    <main class="panes">
-      <section class="pane graph">
+    <main ref="panes" class="panes" :style="{ gridTemplateColumns: `${split}% 6px minmax(0, 1fr)` }">
+      <section class="pane">
         <GraphView
           ref="graphView"
           :nodes="nodes"
@@ -106,6 +166,18 @@ onMounted(run)
           @select="onGraphSelect"
         />
       </section>
+      <div
+        class="divider"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="Resize panes"
+        tabindex="0"
+        @pointerdown="startResize"
+        @pointermove="onResize"
+        @pointerup="endResize"
+        @pointercancel="endResize"
+        @keydown="nudgeSplit"
+      />
       <section class="pane">
         <CodeEditor v-model="code" :highlight="highlight" @cursor-line="onCursorLine" />
       </section>
@@ -114,71 +186,92 @@ onMounted(run)
 </template>
 
 <style>
-html,
-body,
-#app {
-  height: 100%;
-  margin: 0;
-}
-
-body {
-  background: #1e1e1e;
-  color: #e6e6e6;
-  font-family: system-ui, sans-serif;
-}
-
 .app {
   display: grid;
-  grid-template-rows: 48px 1fr;
+  grid-template-rows: 52px minmax(0, 1fr);
   height: 100%;
 }
 
 .toolbar {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 0 16px;
-  background: #252526;
-  border-bottom: 1px solid #333;
+  gap: 10px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
 }
 
 .title {
-  margin-right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: 14px;
+  font-size: 15px;
+  letter-spacing: 0.01em;
+}
+
+.title .dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 12px rgba(var(--accent-rgb), 0.8);
 }
 
 .button {
-  padding: 6px 12px;
-  border: 1px solid #555;
-  border-radius: 4px;
-  background: #333;
-  color: inherit;
-  font: inherit;
+  padding: 7px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface-raised);
+  color: var(--text);
+  font: 500 13px var(--font-ui);
   cursor: pointer;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
+}
+
+.button:hover:not(:disabled) {
+  border-color: var(--accent);
 }
 
 .button.primary {
-  background: #0e639c;
-  border-color: #0e639c;
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #1a0d03;
+}
+
+.button.primary:hover:not(:disabled) {
+  background: #ff7d36;
+}
+
+.button.toggle[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.14);
 }
 
 .button:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: default;
 }
 
 .file {
-  color: #9da5b4;
-  font-size: 13px;
+  margin-left: auto;
+  color: var(--muted);
+  font: 12px var(--font-code);
 }
 
 .error {
-  color: #f48771;
-  font-size: 13px;
+  padding: 4px 10px;
+  border: 1px solid rgba(255, 92, 92, 0.4);
+  border-radius: 8px;
+  background: rgba(255, 92, 92, 0.08);
+  color: var(--danger);
+  font-size: 12px;
 }
 
 .panes {
   display: grid;
-  grid-template-columns: 1fr 1fr;
   min-height: 0;
 }
 
@@ -188,7 +281,17 @@ body {
   height: 100%;
 }
 
-.pane.graph {
-  border-right: 1px solid #333;
+.divider {
+  cursor: col-resize;
+  background: var(--border);
+  touch-action: none;
+  transition: background 0.15s;
+}
+
+.divider:hover,
+.divider:focus-visible,
+.divider:active {
+  background: var(--accent);
+  outline: none;
 }
 </style>

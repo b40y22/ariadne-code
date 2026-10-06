@@ -1,8 +1,12 @@
 <script setup lang="ts">
+import { Background } from '@vue-flow/background'
 import { VueFlow, useVueFlow, type Edge, type Node } from '@vue-flow/core'
 import { shallowRef, watch } from 'vue'
 
 import { applyPositions, clearPositions, layoutKey, loadPositions, savePositions } from '../graph/positions'
+import { theme } from '../theme'
+import CodeNode from './CodeNode.vue'
+import GraphLegend from './GraphLegend.vue'
 
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
@@ -56,7 +60,7 @@ onNodeDragStop(() => savePositions(localStorage, layoutKey(props.fileName), getN
 onNodesInitialized(() => {
   if (pendingFit) {
     pendingFit = false
-    void fitView({ padding: 0.2 })
+    void fitView({ padding: 0.1, maxZoom: 1.25 })
   }
 })
 
@@ -74,59 +78,52 @@ defineExpose({ resetLayout })
 </script>
 
 <template>
-  <VueFlow
-    v-model:nodes="model"
-    :edges="edges"
-    :min-zoom="0.1"
-    :max-zoom="2"
-    :nodes-connectable="false"
-    :elements-selectable="false"
-  />
+  <div class="graph-view">
+    <VueFlow
+      v-model:nodes="model"
+      :edges="edges"
+      :min-zoom="0.1"
+      :max-zoom="2"
+      :nodes-connectable="false"
+      :elements-selectable="false"
+    >
+      <template #node-code="nodeProps">
+        <CodeNode :data="nodeProps.data" />
+      </template>
+      <Background :gap="22" :size="1.3" :pattern-color="theme.dot" />
+    </VueFlow>
+    <GraphLegend />
+  </div>
 </template>
 
 <style>
-.ariadne-node {
-  border: 1px solid #5a6270;
-  border-radius: 6px;
-  background: #2b2f38;
-  color: #e6e6e6;
-  font: 13px/1.2 ui-monospace, 'SFMono-Regular', Menlo, monospace;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+.graph-view {
+  position: relative;
+  width: 100%;
+  height: 100%;
 }
 
-.ariadne-class {
-  border-color: #c586c0;
-  font-weight: 600;
+.vue-flow__edge-path {
+  stroke-width: 1.75;
 }
 
-.ariadne-method {
-  border-color: #569cd6;
+.ariadne-edge-calls .vue-flow__edge-path {
+  stroke: var(--accent);
+  filter: drop-shadow(0 0 3px rgba(var(--accent-rgb), 0.45));
 }
 
-.ariadne-unresolved {
-  border-style: dashed;
-  border-color: #808080;
-  color: #a0a0a0;
+.ariadne-edge-contains .vue-flow__edge-path {
+  stroke: var(--dim);
+  stroke-dasharray: 5 5;
 }
 
-.ariadne-node.is-selected {
-  box-shadow: 0 0 0 2px #ffd166;
-}
-
-.ariadne-edge-contains path {
-  stroke: #c586c0;
-  stroke-dasharray: 4 4;
-  opacity: 0.6;
-}
-
-.ariadne-edge-calls path {
-  stroke: #569cd6;
+.vue-flow__edge-textbg {
+  fill: var(--surface);
+  stroke: var(--border);
 }
 
 .vue-flow__edge-text {
-  fill: #e6e6e6;
-  font-size: 11px;
+  fill: var(--text);
+  font: 11px var(--font-code);
 }
 </style>

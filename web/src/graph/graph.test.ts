@@ -47,10 +47,18 @@ describe('toClassMap', () => {
   })
 
   it('labels methods with parentheses', () => {
-    const labels = toClassMap(graph).nodes.map((n) => n.label)
+    const titles = toClassMap(graph).nodes.map((n) => n.data.title)
 
-    expect(labels).toContain('a()')
-    expect(labels).toContain('A')
+    expect(titles).toContain('a()')
+    expect(titles).toContain('A')
+  })
+
+  it('describes classes by method count and methods by line range', () => {
+    const byId = new Map(toClassMap(graph).nodes.map((n) => [n.id, n.data]))
+
+    expect(byId.get('class:A')).toMatchObject({ kind: 'class', subtitle: '2 methods' })
+    expect(byId.get('method:A::a')).toMatchObject({ kind: 'method', subtitle: 'L3–9' })
+    expect(byId.get('unresolved:$x->go')?.kind).toBe('unresolved')
   })
 
   it('collapses repeated calls into one edge with a count', () => {

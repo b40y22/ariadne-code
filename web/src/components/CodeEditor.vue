@@ -4,6 +4,8 @@ import 'monaco-editor/esm/vs/basic-languages/php/php.contribution'
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker'
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
+import { theme } from '../theme'
+
 export interface Highlight {
   start: number
   end: number
@@ -25,10 +27,29 @@ let editor: monaco.editor.IStandaloneCodeEditor | undefined
 let decorations: monaco.editor.IEditorDecorationsCollection | undefined
 
 onMounted(() => {
+  monaco.editor.defineTheme('ariadne', {
+    base: 'vs-dark',
+    inherit: true,
+    rules: [],
+    colors: {
+      'editor.background': theme.bg,
+      'editorGutter.background': theme.bg,
+      'editor.lineHighlightBackground': '#ffffff08',
+      'editor.selectionBackground': `${theme.accent}33`,
+      'editorLineNumber.foreground': theme.dim,
+      'editorLineNumber.activeForeground': theme.muted,
+      'editorCursor.foreground': theme.accent,
+      'scrollbarSlider.background': '#ffffff14',
+    },
+  })
+
   editor = monaco.editor.create(container.value as HTMLElement, {
     value: props.modelValue,
     language: 'php',
-    theme: 'vs-dark',
+    theme: 'ariadne',
+    fontFamily: "'JetBrains Mono', ui-monospace, Menlo, monospace",
+    padding: { top: 12 },
+    renderLineHighlight: 'none',
     automaticLayout: true,
     minimap: { enabled: false },
     fontSize: 13,
@@ -90,6 +111,7 @@ function applyHighlight(highlight: Highlight | null): void {
 }
 
 .ariadne-line-highlight {
-  background: rgba(86, 156, 214, 0.22);
+  background: rgba(var(--accent-rgb), 0.12);
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 </style>

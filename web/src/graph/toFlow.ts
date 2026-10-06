@@ -1,7 +1,34 @@
-import type { Edge, Node } from '@vue-flow/core'
-import type { Graph, NodeType } from './types'
+import type { Edge, MarkerType, Node } from '@vue-flow/core'
+import { theme } from '../theme'
+import type { Graph, GraphNode, NodeType } from './types'
+
+export type CodeNodeKind = 'class' | 'method' | 'unresolved'
+
+/** What the `code` node component renders. */
+export interface CodeNodeData {
+  kind: CodeNodeKind
+  title: string
+  subtitle: string
+}
+
+/** A Vue Flow node that is known to carry its display data. */
+export type CodeNode = Node<CodeNodeData> & { data: CodeNodeData }
 
 const CLASS_MAP_TYPES: ReadonlySet<NodeType> = new Set(['class', 'method', 'unresolved'])
+
+function describe(node: GraphNode, methodCount: number): CodeNodeData {
+  if (node.type === 'class') {
+    return { kind: 'class', title: node.name, subtitle: `${methodCount} ${methodCount === 1 ? 'method' : 'methods'}` }
+  }
+
+  if (node.type === 'method') {
+    const range = node.lineStart === null ? '' : node.lineStart === node.lineEnd ? `L${node.lineStart}` : `L${node.lineStart}–${node.lineEnd}`
+
+    return { kind: 'method', title: `${node.name}()`, subtitle: range }
+  }
+
+  return { kind: 'unresolved', title: node.name, subtitle: 'not resolved statically' }
+}
 
 /**
  * The class map: classes, their methods and the calls between them.
@@ -9,14 +36,22 @@ const CLASS_MAP_TYPES: ReadonlySet<NodeType> = new Set(['class', 'method', 'unre
  *
  * Repeated calls between the same two methods collapse into one edge labelled "×N".
  */
-export function toClassMap(graph: Graph): { nodes: Node[]; edges: Edge[] } {
-  const nodes: Node[] = graph.nodes
+export function toClassMap(graph: Graph): { nodes: CodeNode[]; edges: Edge[] } {
+  const methodCounts = new Map<string, number>()
+
+  for (const edge of graph.edges) {
+    if (edge.type === 'contains') {
+      methodCounts.set(edge.from, (methodCounts.get(edge.from) ?? 0) + 1)
+    }
+  }
+
+  const nodes: CodeNode[] = graph.nodes
     .filter((node) => CLASS_MAP_TYPES.has(node.type))
     .map((node) => ({
       id: node.id,
-      label: node.type === 'method' ? `${node.name}()` : node.name,
+      type: 'code',
+      data: describe(node, methodCounts.get(node.id) ?? 0),
       position: { x: 0, y: 0 },
-      class: `ariadne-node ariadne-${node.type}`,
     }))
 
   const known = new Set(nodes.map((node) => node.id))
@@ -41,9 +76,10 @@ export function toClassMap(graph: Graph): { nodes: Node[]; edges: Edge[] } {
     id: key,
     source: edge.source,
     target: edge.target,
+    type: 'smoothstep',
     label: edge.count > 1 ? `×${edge.count}` : undefined,
     class: `ariadne-edge ariadne-edge-${edge.type}`,
-    markerEnd: edge.type === 'calls' ? 'arrowclosed' : undefined,
+    markerEnd: edge.type === 'calls' ? { type: 'arrowclosed' as MarkerType, color: theme.accent } : undefined,
   }))
 
   return { nodes, edges }

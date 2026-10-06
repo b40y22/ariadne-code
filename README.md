@@ -2,6 +2,8 @@
 
 Static analyzer that turns PHP source into a language-agnostic **Code Graph**: the thread through the labyrinth of legacy code.
 
+![Ariadne Code: class map next to the source code](docs/screenshot.png)
+
 > **Status:** early development. The analyzer extracts classes, methods and method calls. An interactive visualization will be built on top of the graph later.
 
 ```
