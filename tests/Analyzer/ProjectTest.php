@@ -160,6 +160,22 @@ final class ProjectTest extends TestCase
     }
 
     #[Test]
+    public function a_chain_of_properties_is_followed_one_class_at_a_time(): void
+    {
+        $graph = Analyzed::project([
+            'Repo.php' => self::REPO,
+            'Billing.php' => "namespace App;\nclass Billing { public Repo \$invoices; public \$notes; }",
+            'Job.php' => "namespace App;\nclass Job {\n private Billing \$billing;\n function run(Billing \$b) { \$this->billing->invoices->save(); \$b?->invoices->save(); \$this->billing->notes->save(); }\n}",
+        ]);
+
+        self::assertSame([
+            'method:App\\Job::run -> method:App\\Repo::save',
+            'method:App\\Job::run -> method:App\\Repo::save',
+            'method:App\\Job::run -> unresolved:$this->billing->notes->save',
+        ], Analyzed::calls($graph));
+    }
+
+    #[Test]
     public function a_typed_parameter_that_is_never_reassigned_types_its_calls(): void
     {
         $graph = Analyzed::project([

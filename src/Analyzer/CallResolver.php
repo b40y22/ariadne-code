@@ -75,18 +75,27 @@ final readonly class CallResolver
         return null;
     }
 
-    /** The class whose methods the call can reach, when the receiver tells. */
+    /** The class whose methods the call can reach, when the receiver tells: the base, then each property read. */
     private function receiverClass(PendingCall $call): ?string
     {
         $receiver = $call->receiver;
         $own = $call->class === '' ? null : $call->class;
 
-        return match ($receiver?->kind) {
+        $class = match ($receiver?->kind) {
             ReceiverKind::This, ReceiverKind::Self_ => $own,
             ReceiverKind::Parent_ => $own === null ? null : $this->index->class($own)?->parent,
             ReceiverKind::ClassName => $receiver->name,
-            ReceiverKind::Property => $own === null || $receiver->name === null ? null : $this->index->propertyType($own, $receiver->name),
             default => null,
         };
+
+        foreach ($receiver->path ?? [] as $property) {
+            if ($class === null) {
+                return null;
+            }
+
+            $class = $this->index->propertyType($class, $property);
+        }
+
+        return $class;
     }
 }

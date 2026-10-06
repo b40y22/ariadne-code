@@ -12,7 +12,7 @@ final readonly class PendingCall
     /**
      * @param string $class The class whose code makes the call; empty outside a class.
      * @param Receiver|null $receiver What a method or static call is made on; null for a function call.
-     *                                A variable whose class is known is already a `ClassName` receiver here.
+     *                                A variable whose class is known is already a `ClassName` base here.
      * @param string|null $method Lowercased method name, when it is written literally.
      * @param string $label Human-readable callee, used when the call stays unresolved.
      * @param list<string> $functions Lowercased names a function call may refer to, most specific first.

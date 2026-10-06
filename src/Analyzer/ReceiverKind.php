@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Ariadne\Analyzer;
 
 /**
- * The receivers the resolver can follow. Anything else (a call result, an array element, a dynamic class name)
+ * The bases of the receivers the resolver can follow. Anything else (a call result, an array element, a dynamic class name)
  * is `Other`, and its call stays unresolved.
  */
 enum ReceiverKind
@@ -19,9 +19,6 @@ enum ReceiverKind
 
     /** A class named in the code: `Foo::bar()` or `(new Foo())->bar()`. */
     case ClassName;
-
-    /** `$this->name->bar()`. */
-    case Property;
 
     /** `$name->bar()`. */
     case Variable;

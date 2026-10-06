@@ -15,6 +15,7 @@ use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\New_;
 use PhpParser\Node\Expr\NullsafeMethodCall;
+use PhpParser\Node\Expr\NullsafePropertyFetch;
 use PhpParser\Node\Expr\PropertyFetch;
 use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Expr\Ternary;
@@ -71,21 +72,21 @@ final readonly class CallSiteReader
 
     private static function objectReceiver(Expr $var): Receiver
     {
-        if ($var instanceof Variable && is_string($var->name)) {
-            return $var->name === 'this'
-                ? new Receiver(ReceiverKind::This)
-                : new Receiver(ReceiverKind::Variable, $var->name);
+        $path = [];
+
+        while (($var instanceof PropertyFetch || $var instanceof NullsafePropertyFetch) && $var->name instanceof Identifier) {
+            array_unshift($path, $var->name->toString());
+            $var = $var->var;
         }
 
-        if ($var instanceof PropertyFetch && $var->var instanceof Variable && $var->var->name === 'this' && $var->name instanceof Identifier) {
-            return new Receiver(ReceiverKind::Property, $var->name->toString());
-        }
+        $base = match (true) {
+            $var instanceof Variable && $var->name === 'this' => new Receiver(ReceiverKind::This),
+            $var instanceof Variable && is_string($var->name) => new Receiver(ReceiverKind::Variable, $var->name),
+            $var instanceof New_ => self::classReceiver($var->class),
+            default => new Receiver(ReceiverKind::Other),
+        };
 
-        if ($var instanceof New_ && $var->class instanceof Name) {
-            return self::classReceiver($var->class);
-        }
-
-        return new Receiver(ReceiverKind::Other);
+        return $base->kind === ReceiverKind::Other ? $base : new Receiver($base->kind, $base->name, $path);
     }
 
     private static function classReceiver(Name|Expr|Class_ $class): Receiver

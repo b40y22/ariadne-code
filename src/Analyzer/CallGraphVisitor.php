@@ -288,7 +288,7 @@ final class CallGraphVisitor extends NodeVisitorAbstract
         // A variable whose class is known is as good as the class named in the code.
         if ($receiver?->kind === ReceiverKind::Variable && $receiver->name !== null) {
             $type = $this->variablesInScope()[$receiver->name] ?? null;
-            $receiver = $type === null ? $receiver : new Receiver(ReceiverKind::ClassName, $type);
+            $receiver = $type === null ? $receiver : new Receiver(ReceiverKind::ClassName, $type, $receiver->path);
         }
 
         $this->pendingCalls[] = new PendingCall(
