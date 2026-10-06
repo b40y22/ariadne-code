@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Background } from '@vue-flow/background'
 import { VueFlow, useVueFlow, type Edge, type Node } from '@vue-flow/core'
-import { shallowRef, watch } from 'vue'
+import { nextTick, shallowRef, watch } from 'vue'
 
 import { nodeClass } from '../graph/classes'
 import { isInView, readableViewport } from '../graph/viewport'
@@ -45,12 +45,20 @@ const classFor = (id: string): string =>
 watch(
   () => props.nodes,
   (nodes) => {
+    // Vue Flow reports nodes as initialized only when new ones are measured. When every node is on screen
+    // already (hiding the unresolved ones), nothing is reported, so the fit has to wait for the next render.
+    const measured = nodes.every((node) => baseClass.has(node.id))
+
     baseClass.clear()
     applied.clear()
     nodes.forEach((node) => baseClass.set(node.id, plainClass(node)))
-    pendingFit = true
+    pendingFit = !measured
     model.value = applyPositions(nodes, loadPositions(localStorage, layoutKey(props.fileName))).map((node) => ({ ...node, class: classFor(node.id) }))
     nodes.forEach((node) => applied.set(node.id, classFor(node.id)))
+
+    if (measured) {
+      void nextTick(fit)
+    }
   },
   { immediate: true },
 )
@@ -80,7 +88,9 @@ watch(
       return
     }
 
-    const rect = { x: node.position.x, y: node.position.y, width: node.dimensions.width, height: node.dimensions.height }
+    // `position` of a method is relative to its class container; `computedPosition` is where it is on the canvas.
+    const { x, y } = node.computedPosition
+    const rect = { x, y, width: node.dimensions.width, height: node.dimensions.height }
 
     if (!isInView(rect, viewport.value, dimensions.value)) {
       void setCenter(rect.x + rect.width / 2, rect.y + rect.height / 2, { zoom: viewport.value.zoom, duration: 350 })
