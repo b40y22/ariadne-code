@@ -345,6 +345,151 @@ final class MethodFlowTest extends TestCase
         }
     }
 
+    #[Test]
+    public function a_ternary_branches_into_its_two_sides(): void
+    {
+        $flow = $this->flow('function a($x) { return $x ? $this->b() : $this->c(); }');
+
+        self::assertSame([
+            'start -> condition $x ?',
+            'condition $x ? -> call $this->b [true]',
+            'condition $x ? -> call $this->c [false]',
+            'call $this->b -> return return $x ? $this->b() : $this->c()',
+            'call $this->c -> return return $x ? $this->b() : $this->c()',
+            'return return $x ? $this->b() : $this->c() -> end',
+        ], $flow);
+    }
+
+    #[Test]
+    public function a_short_ternary_runs_the_right_side_only_when_the_condition_is_falsy(): void
+    {
+        $flow = $this->flow('function a() { $v = $this->a() ?: $this->b(); }');
+
+        self::assertSame([
+            'start -> call $this->a',
+            'call $this->a -> condition $this->a() ?',
+            'condition $this->a() ? -> call $this->b [false]',
+            'condition $this->a() ? -> end [true]',
+            'call $this->b -> end',
+        ], $flow);
+    }
+
+    #[Test]
+    public function a_throw_on_the_right_of_a_coalesce_is_a_branch_that_leaves_the_method(): void
+    {
+        $flow = $this->flow('function a() { return $this->f() ?? throw new \E($this->g()); }');
+
+        self::assertSame([
+            'start -> call $this->f',
+            'call $this->f -> condition $this->f() ??',
+            'condition $this->f() ?? -> call $this->g [null]',
+            'call $this->g -> throw throw new \E($this->g())',
+            'condition $this->f() ?? -> return return $this->f() ?? throw new \E($this->g()) [set]',
+            'throw throw new \E($this->g()) -> end',
+            'return return $this->f() ?? throw new \E($this->g()) -> end',
+        ], $flow);
+    }
+
+    #[Test]
+    public function a_coalesce_with_nothing_to_show_on_the_right_adds_no_branch(): void
+    {
+        $flow = $this->flow('function a() { $x = $this->a() ?? "default"; }');
+
+        self::assertSame(['start -> call $this->a', 'call $this->a -> end'], $flow);
+    }
+
+    #[Test]
+    public function a_chain_of_coalesces_branches_once_per_link(): void
+    {
+        $flow = $this->flow('function a() { $this->a() ?? $this->b() ?? throw new \E(); }');
+
+        self::assertSame([
+            'start -> call $this->a',
+            'call $this->a -> condition $this->a() ??',
+            'condition $this->a() ?? -> call $this->b [null]',
+            'call $this->b -> condition $this->b() ??',
+            'condition $this->b() ?? -> throw throw new \E() [null]',
+            'condition $this->a() ?? -> end [set]',
+            'condition $this->b() ?? -> end [set]',
+            'throw throw new \E() -> end',
+        ], $flow);
+    }
+
+    #[Test]
+    public function a_coalesce_assignment_runs_the_right_side_only_when_unset(): void
+    {
+        $flow = $this->flow('function a() { $this->x ??= $this->make(); }');
+
+        self::assertSame([
+            'start -> condition $this->x ??=',
+            'condition $this->x ??= -> call $this->make [null]',
+            'condition $this->x ??= -> end [set]',
+            'call $this->make -> end',
+        ], $flow);
+    }
+
+    #[Test]
+    public function and_runs_the_right_side_only_when_the_left_is_true(): void
+    {
+        $flow = $this->flow('function a() { if ($this->a() && $this->b()) { $this->c(); } }');
+
+        self::assertSame([
+            'start -> call $this->a',
+            'call $this->a -> condition $this->a() &&',
+            'condition $this->a() && -> call $this->b [true]',
+            'condition $this->a() && -> condition $this->a() && $this->b() [false]',
+            'call $this->b -> condition $this->a() && $this->b()',
+            'condition $this->a() && $this->b() -> call $this->c [true]',
+            'call $this->c -> end',
+            'condition $this->a() && $this->b() -> end [false]',
+        ], $flow);
+    }
+
+    #[Test]
+    public function or_runs_the_right_side_only_when_the_left_is_false(): void
+    {
+        $flow = $this->flow('function a() { $this->a() || $this->b(); }');
+
+        self::assertSame([
+            'start -> call $this->a',
+            'call $this->a -> condition $this->a() ||',
+            'condition $this->a() || -> call $this->b [false]',
+            'condition $this->a() || -> end [true]',
+            'call $this->b -> end',
+        ], $flow);
+    }
+
+    #[Test]
+    public function plain_conditions_do_not_gain_extra_nodes(): void
+    {
+        $flow = $this->flow('function a($x, $y) { if ($x && $y) { $this->b(); } }');
+
+        self::assertSame([
+            'start -> condition $x && $y',
+            'condition $x && $y -> call $this->b [true]',
+            'call $this->b -> end',
+            'condition $x && $y -> end [false]',
+        ], $flow);
+    }
+
+    #[Test]
+    public function a_throw_expression_inside_try_is_caught(): void
+    {
+        $flow = $this->flow('function a() { try { $x = $this->a() ?? throw new \E(); } catch (\E $e) {} }');
+
+        self::assertContains('throw throw new \E() -> catch catch (E $e) [throw]', $flow);
+        self::assertNotContains('throw throw new \E() -> end', $flow);
+    }
+
+    #[Test]
+    public function calls_after_a_throwing_branch_run_only_on_the_surviving_path(): void
+    {
+        $flow = $this->flow('function a() { $x = $this->a() ?? throw new \E(); $this->after(); }');
+
+        self::assertContains('condition $this->a() ?? -> call $this->after [set]', $flow);
+        self::assertNotContains('throw throw new \E() -> call $this->after', $flow);
+    }
+
     /**
      * Flow edges of method "A::a" as "from -> to [label]" strings, in creation order.
      * Start and end print as their type, other nodes as "type name".

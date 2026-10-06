@@ -11,18 +11,31 @@ use Ariadne\Graph\Node;
 use Ariadne\Graph\NodeType;
 use PhpParser\Node as AstNode;
 use PhpParser\Node\Expr;
+use PhpParser\Node\Expr\ArrowFunction;
+use PhpParser\Node\Expr\AssignOp\Coalesce as CoalesceAssign;
+use PhpParser\Node\Expr\BinaryOp\BooleanAnd;
+use PhpParser\Node\Expr\BinaryOp\BooleanOr;
+use PhpParser\Node\Expr\BinaryOp\Coalesce;
+use PhpParser\Node\Expr\BinaryOp\LogicalAnd;
+use PhpParser\Node\Expr\BinaryOp\LogicalOr;
+use PhpParser\Node\Expr\Closure;
+use PhpParser\Node\Expr\Match_;
+use PhpParser\Node\Expr\Ternary;
 use PhpParser\Node\Expr\Throw_;
 use PhpParser\Node\Scalar\Int_;
 use PhpParser\Node\Stmt;
 use PhpParser\Node\Stmt\Break_;
+use PhpParser\Node\Stmt\Class_;
 use PhpParser\Node\Stmt\ClassMethod;
 use PhpParser\Node\Stmt\Continue_;
 use PhpParser\Node\Stmt\Do_;
 use PhpParser\Node\Stmt\Expression;
 use PhpParser\Node\Stmt\For_;
 use PhpParser\Node\Stmt\Foreach_;
+use PhpParser\Node\Stmt\Function_;
 use PhpParser\Node\Stmt\If_;
 use PhpParser\Node\Stmt\Return_;
+use PhpParser\Node\Stmt\Switch_;
 use PhpParser\Node\Stmt\TryCatch;
 use PhpParser\Node\Stmt\While_;
 use PhpParser\PrettyPrinter\Standard;
@@ -35,6 +48,8 @@ use PhpParser\PrettyPrinter\Standard;
  *
  * Known simplifications, kept explicit rather than guessed:
  * - `switch`/`match` are not branched; their calls appear in source order as plain steps.
+ * - Expressions branch where PHP does: `?:`, `??`, `??=`, and `&&`/`||` when the right side calls or throws.
+ *   A `throw` inside an expression (`$x ?? throw new E()`) leaves the method like a `throw` statement.
  * - Calls in loop headers (`while ($this->next())`) are not steps, as they run on every iteration.
  * - `do ... while` is drawn like `while`, with the condition node before the body.
  * - Exceptions thrown by called methods are unknown; a `try` links to each of its `catch` blocks.
@@ -116,8 +131,7 @@ final class MethodFlowBuilder
             $stmt instanceof Return_ => $this->return($stmt, $in),
             $stmt instanceof Break_ => $this->break($stmt, $in),
             $stmt instanceof Continue_ => $this->continue($stmt, $in),
-            $stmt instanceof Expression && $stmt->expr instanceof Throw_ => $this->throw($stmt->expr, $in),
-            default => $this->calls($stmt, $in),
+            default => $this->evaluate($stmt, $in),
         };
     }
 
@@ -130,7 +144,7 @@ final class MethodFlowBuilder
      */
     private function branch(Expr $cond, array $stmts, array $elseifs, ?Stmt\Else_ $else, array $in): array
     {
-        $in = $this->calls($cond, $in);
+        $in = $this->evaluate($cond, $in);
         $node = $this->add(NodeType::Condition, $this->text($cond), $cond);
         $this->connect($in, $node);
 
@@ -215,7 +229,7 @@ final class MethodFlowBuilder
      */
     private function return(Return_ $stmt, array $in): array
     {
-        $in = $this->calls($stmt, $in);
+        $in = $this->evaluate($stmt, $in);
         $node = $this->add(NodeType::Return_, $stmt->expr === null ? 'return' : 'return ' . $this->text($stmt->expr), $stmt);
         $this->connect($in, $node);
         $this->toEnd[] = new FlowExit($node);
@@ -230,7 +244,7 @@ final class MethodFlowBuilder
      */
     private function throw(Throw_ $expr, array $in): array
     {
-        $in = $this->calls($expr, $in);
+        $in = $this->evaluate($expr->expr, $in);
         $node = $this->add(NodeType::Throw_, 'throw ' . $this->text($expr->expr), $expr);
         $this->connect($in, $node);
 
@@ -276,13 +290,115 @@ final class MethodFlowBuilder
     }
 
     /**
-     * Adds a step for every call inside the node, in evaluation order.
+     * Adds the steps of an expression or statement in the order PHP evaluates it.
+     *
+     * Most nodes just evaluate their children left to right and then, if the node is itself a call,
+     * add its step. The few that decide whether something runs at all (`?:`, `??`, `&&`, `throw`...)
+     * branch instead, so a call on the unused side is not shown as always executed.
      *
      * @param list<FlowExit> $in
      *
      * @return list<FlowExit>
      */
-    private function calls(AstNode $node, array $in): array
+    private function evaluate(AstNode $node, array $in): array
+    {
+        if ($in === []) {
+            return [];
+        }
+
+        // Their bodies do not run at this point of the flow.
+        if ($node instanceof Closure || $node instanceof ArrowFunction || $node instanceof Class_ || $node instanceof Function_) {
+            return $in;
+        }
+
+        if ($node instanceof Switch_ || $node instanceof Match_) {
+            return $this->flat($node, $in);
+        }
+
+        $branched = match (true) {
+            $node instanceof Throw_ => $this->throw($node, $in),
+            $node instanceof Ternary => $this->ternary($node, $in),
+            $node instanceof Coalesce => $this->guarded($node->left, $node->right, '??', ['set', 'null'], $in),
+            $node instanceof CoalesceAssign => $this->guarded($node->var, $node->expr, '??=', ['set', 'null'], $in),
+            $node instanceof BooleanAnd, $node instanceof LogicalAnd => $this->guarded($node->left, $node->right, '&&', ['false', 'true'], $in),
+            $node instanceof BooleanOr, $node instanceof LogicalOr => $this->guarded($node->left, $node->right, '||', ['true', 'false'], $in),
+            default => null,
+        };
+
+        if ($branched !== null) {
+            return $branched;
+        }
+
+        foreach ($this->children($node) as $child) {
+            $in = $this->evaluate($child, $in);
+        }
+
+        $site = $in === [] ? null : $this->reader->read($node);
+
+        if ($site !== null) {
+            $step = $this->add(NodeType::Call, $site->label, $node);
+            $this->connect($in, $step);
+            $in = [new FlowExit($step)];
+        }
+
+        return $in;
+    }
+
+    /**
+     * `cond ? a : b`, or `cond ?: b` where the condition itself is the value of the true side.
+     *
+     * @param list<FlowExit> $in
+     *
+     * @return list<FlowExit>
+     */
+    private function ternary(Ternary $node, array $in): array
+    {
+        $in = $this->evaluate($node->cond, $in);
+        $condition = $this->add(NodeType::Condition, $this->text($node->cond) . ' ?', $node->cond);
+        $this->connect($in, $condition);
+
+        $true = [new FlowExit($condition, 'true')];
+        $then = $node->if === null ? $true : $this->evaluate($node->if, $true);
+        $else = $this->evaluate($node->else, [new FlowExit($condition, 'false')]);
+
+        return [...$then, ...$else];
+    }
+
+    /**
+     * An operator that runs its right side only for some values of the left: `??`, `??=`, `&&`, `||`.
+     *
+     * Without calls or a throw on the right there is nothing to show, so it is evaluated as plain operands.
+     *
+     * @param array{string, string} $labels Branch that skips the right side, then the one that runs it.
+     * @param list<FlowExit> $in
+     *
+     * @return list<FlowExit>
+     */
+    private function guarded(Expr $left, Expr $right, string $operator, array $labels, array $in): array
+    {
+        $in = $this->evaluate($left, $in);
+
+        if (!FlowCallCollector::hasEffects($right, $this->reader)) {
+            return $in;
+        }
+
+        [$skip, $run] = $labels;
+        $condition = $this->add(NodeType::Condition, $this->text($left) . ' ' . $operator, $left);
+        $this->connect($in, $condition);
+
+        $evaluated = $this->evaluate($right, [new FlowExit($condition, $run)]);
+
+        return [new FlowExit($condition, $skip), ...$evaluated];
+    }
+
+    /**
+     * Calls inside a construct that is not branched (`switch`, `match`): plain steps in source order.
+     *
+     * @param list<FlowExit> $in
+     *
+     * @return list<FlowExit>
+     */
+    private function flat(AstNode $node, array $in): array
     {
         foreach (FlowCallCollector::collect($node, $this->reader) as [$site, $call]) {
             $step = $this->add(NodeType::Call, $site->label, $call);
@@ -291,6 +407,28 @@ final class MethodFlowBuilder
         }
 
         return $in;
+    }
+
+    /**
+     * The direct children of a node, in source order.
+     *
+     * @return iterable<AstNode>
+     */
+    private function children(AstNode $node): iterable
+    {
+        foreach ($node->getSubNodeNames() as $name) {
+            $value = $node->$name;
+
+            if ($value instanceof AstNode) {
+                yield $value;
+            } elseif (is_array($value)) {
+                foreach ($value as $item) {
+                    if ($item instanceof AstNode) {
+                        yield $item;
+                    }
+                }
+            }
+        }
     }
 
     private function add(NodeType $type, string $name, AstNode $at): string

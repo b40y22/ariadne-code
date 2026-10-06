@@ -7,6 +7,7 @@ namespace Ariadne\Analyzer;
 use PhpParser\Node as AstNode;
 use PhpParser\Node\Expr\ArrowFunction;
 use PhpParser\Node\Expr\Closure;
+use PhpParser\Node\Expr\Throw_;
 use PhpParser\Node\Stmt\Class_;
 use PhpParser\Node\Stmt\Function_;
 use PhpParser\NodeTraverser;
@@ -24,7 +25,20 @@ final class FlowCallCollector extends NodeVisitorAbstract
     /** @var list<array{CallSite, AstNode}> */
     private array $calls = [];
 
+    private bool $throws = false;
+
     private function __construct(private readonly CallSiteReader $reader) {}
+
+    /**
+     * Whether evaluating the node does anything the flow shows: calls a method or throws.
+     */
+    public static function hasEffects(AstNode $node, CallSiteReader $reader): bool
+    {
+        $collector = new self($reader);
+        new NodeTraverser($collector)->traverse([$node]);
+
+        return $collector->calls !== [] || $collector->throws;
+    }
 
     /**
      * @return list<array{CallSite, AstNode}>
@@ -48,6 +62,10 @@ final class FlowCallCollector extends NodeVisitorAbstract
 
     public function leaveNode(AstNode $node): null
     {
+        if ($node instanceof Throw_) {
+            $this->throws = true;
+        }
+
         $site = $this->reader->read($node);
 
         if ($site !== null) {
