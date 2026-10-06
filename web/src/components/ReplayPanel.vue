@@ -167,7 +167,7 @@ watch(
   background: var(--surface);
 }
 
-/* A thicker invisible hit area around the 1px border, so the edge is easy to grab. */
+/* The hit area stays generous so the edge is easy to grab; only a thin line is drawn when it is active. */
 .replay-grip {
   position: absolute;
   top: -4px;
@@ -179,12 +179,25 @@ watch(
   touch-action: none;
 }
 
-.replay-grip:hover,
-.replay-grip:focus-visible,
-.replay-grip:active {
+.replay-grip::after {
+  position: absolute;
+  top: 4px;
+  right: 0;
+  left: 0;
+  height: 2px;
+  background: transparent;
+  content: '';
+  transition: background 0.15s;
+}
+
+.replay-grip:hover::after,
+.replay-grip:focus-visible::after,
+.replay-grip:active::after {
   background: var(--accent);
+}
+
+.replay-grip:focus-visible {
   outline: none;
-  opacity: 0.8;
 }
 
 .replay-head,
