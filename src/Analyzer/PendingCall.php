@@ -16,6 +16,7 @@ final readonly class PendingCall
      * @param string|null $method Method name as written, when it is written literally.
      * @param string $label Human-readable callee, used when the call stays unresolved.
      * @param list<string> $functions Lowercased names a function call may refer to, most specific first.
+     * @param string|null $stepId The flow step of this call, when it is one.
      */
     public function __construct(
         public string $fromMethodId,
@@ -25,5 +26,6 @@ final readonly class PendingCall
         public string $label,
         public int $line,
         public array $functions = [],
+        public ?string $stepId = null,
     ) {}
 }

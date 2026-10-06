@@ -87,6 +87,12 @@ final class MethodFlowBuilder
 
     private readonly FlowLabels $labels;
 
+    /**
+     * Set on the AST node of a call that became a step, with the step's id, so the call recorded for the
+     * call graph can draw a `target` edge from the step once it is resolved.
+     */
+    public const string STEP_ATTRIBUTE = 'ariadneFlowStep';
+
     public function __construct(
         private readonly Graph $graph,
         private readonly CallSiteReader $reader,
@@ -375,7 +381,9 @@ final class MethodFlowBuilder
 
         if ($site !== null) {
             $type = $site->quiet ? NodeType::Builtin : NodeType::Call;
-            $in = $this->callbacks($node, $this->step($type, $site->label, $node, $in));
+            $step = $this->step($type, $site->label, $node, $in);
+            $node->setAttribute(self::STEP_ATTRIBUTE, $step[0]->from);
+            $in = $this->callbacks($node, $step);
         }
 
         return $in;

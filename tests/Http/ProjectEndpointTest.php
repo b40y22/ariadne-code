@@ -68,8 +68,9 @@ final class ProjectEndpointTest extends TestCase
 
         self::assertSame(200, $response->status);
         self::assertSame(['method:Shop\\Services\\OrderService::place'], array_values(array_unique(self::column($nodes, 'parent'))));
-        self::assertSame(['flow'], array_values(array_unique(self::column($edges, 'type'))));
+        self::assertSame(['flow', 'target'], array_values(array_unique(self::column($edges, 'type'))));
         self::assertContains('$this->repository->create', self::column($nodes, 'name'));
+        self::assertContains('method:Shop\\Repositories\\BaseRepository::create', self::column($edges, 'to'));
     }
 
     #[Test]

@@ -533,9 +533,23 @@
             "label": null
         },
         {
+            "from": "flow:method:Fixtures\\ShippingService::ship#5",
+            "to": "method:Fixtures\\ShippingService::inStock",
+            "type": "target",
+            "line": 16,
+            "label": null
+        },
+        {
             "from": "method:Fixtures\\ShippingService::ship",
             "to": "method:Fixtures\\ShippingService::pack",
             "type": "calls",
+            "line": 21,
+            "label": null
+        },
+        {
+            "from": "flow:method:Fixtures\\ShippingService::ship#8",
+            "to": "method:Fixtures\\ShippingService::pack",
+            "type": "target",
             "line": 21,
             "label": null
         },
@@ -547,6 +561,13 @@
             "label": null
         },
         {
+            "from": "flow:method:Fixtures\\ShippingService::ship#10",
+            "to": "method:Fixtures\\ShippingService::report",
+            "type": "target",
+            "line": 23,
+            "label": null
+        },
+        {
             "from": "method:Fixtures\\ShippingService::ship",
             "to": "method:Fixtures\\ShippingService::release",
             "type": "calls",
@@ -554,9 +575,23 @@
             "label": null
         },
         {
+            "from": "flow:method:Fixtures\\ShippingService::ship#12",
+            "to": "method:Fixtures\\ShippingService::release",
+            "type": "target",
+            "line": 26,
+            "label": null
+        },
+        {
             "from": "method:Fixtures\\ShippingService::ship",
             "to": "method:Fixtures\\ShippingService::dispatch",
             "type": "calls",
+            "line": 30,
+            "label": null
+        },
+        {
+            "from": "flow:method:Fixtures\\ShippingService::ship#13",
+            "to": "method:Fixtures\\ShippingService::dispatch",
+            "type": "target",
             "line": 30,
             "label": null
         }

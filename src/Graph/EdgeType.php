@@ -11,4 +11,7 @@ enum EdgeType: string
 
     /** Execution order between two nodes of the same method flow. */
     case Flow = 'flow';
+
+    /** From a call step of a flow to what it calls: the same target as the method's `calls` edge for that call. */
+    case Target = 'target';
 }

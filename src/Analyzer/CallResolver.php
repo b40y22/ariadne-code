@@ -35,6 +35,10 @@ final readonly class CallResolver
         }
 
         $this->graph->addEdge(new Edge($call->fromMethodId, $targetId, EdgeType::Calls, $call->line));
+
+        if ($call->stepId !== null) {
+            $this->graph->addEdge(new Edge($call->stepId, $targetId, EdgeType::Target, $call->line));
+        }
     }
 
     private function function(PendingCall $call): ?string

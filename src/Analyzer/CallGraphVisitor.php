@@ -299,6 +299,7 @@ final class CallGraphVisitor extends NodeVisitorAbstract
             label: $site->qualifiedLabel,
             line: $site->line,
             functions: $site->functions,
+            stepId: is_string($step = $node->getAttribute(MethodFlowBuilder::STEP_ATTRIBUTE)) ? $step : null,
         );
     }
 }

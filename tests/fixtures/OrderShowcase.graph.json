@@ -1912,9 +1912,23 @@
             "label": null
         },
         {
+            "from": "flow:method:App\\OrderService::createOrder#2",
+            "to": "method:App\\OrderService::validate",
+            "type": "target",
+            "line": 20,
+            "label": null
+        },
+        {
             "from": "method:App\\OrderService::createOrder",
             "to": "method:App\\OrderService::inStock",
             "type": "calls",
+            "line": 24,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::createOrder#4",
+            "to": "method:App\\OrderService::inStock",
+            "type": "target",
             "line": 24,
             "label": null
         },
@@ -1926,9 +1940,23 @@
             "label": null
         },
         {
+            "from": "flow:method:App\\OrderService::createOrder#7",
+            "to": "method:App\\OrderService::price",
+            "type": "target",
+            "line": 29,
+            "label": null
+        },
+        {
             "from": "method:App\\OrderService::createOrder",
             "to": "external:app\\baseservice::log",
             "type": "calls",
+            "line": 31,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::createOrder#9",
+            "to": "external:app\\baseservice::log",
+            "type": "target",
             "line": 31,
             "label": null
         },
@@ -1940,9 +1968,23 @@
             "label": null
         },
         {
+            "from": "flow:method:App\\OrderService::createOrder#11",
+            "to": "external:app\\db::transaction",
+            "type": "target",
+            "line": 36,
+            "label": null
+        },
+        {
             "from": "method:App\\OrderService::createOrder",
             "to": "external:app\\orderrepository::save",
             "type": "calls",
+            "line": 36,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::createOrder#13",
+            "to": "external:app\\orderrepository::save",
+            "type": "target",
             "line": 36,
             "label": null
         },
@@ -1954,9 +1996,23 @@
             "label": null
         },
         {
+            "from": "flow:method:App\\OrderService::createOrder#12",
+            "to": "method:App\\OrderService::roundMoney",
+            "type": "target",
+            "line": 36,
+            "label": null
+        },
+        {
             "from": "method:App\\OrderService::discount",
             "to": "external:app\\baseservice::loadrates",
             "type": "calls",
+            "line": 42,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::discount#3",
+            "to": "external:app\\baseservice::loadrates",
+            "type": "target",
             "line": 42,
             "label": null
         },
@@ -1968,9 +2024,23 @@
             "label": null
         },
         {
+            "from": "flow:method:App\\OrderService::discount#5",
+            "to": "external:app\\baseservice::defaultrate",
+            "type": "target",
+            "line": 44,
+            "label": null
+        },
+        {
             "from": "method:App\\OrderService::discount",
             "to": "external:app\\baseservice::isvip",
             "type": "calls",
+            "line": 45,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::discount#6",
+            "to": "external:app\\baseservice::isvip",
+            "type": "target",
             "line": 45,
             "label": null
         },
@@ -1982,9 +2052,23 @@
             "label": null
         },
         {
+            "from": "flow:method:App\\OrderService::discount#8",
+            "to": "external:app\\baseservice::hashistory",
+            "type": "target",
+            "line": 45,
+            "label": null
+        },
+        {
             "from": "method:App\\OrderService::discount",
             "to": "external:app\\baseservice::clamp",
             "type": "calls",
+            "line": 47,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::discount#10",
+            "to": "external:app\\baseservice::clamp",
+            "type": "target",
             "line": 47,
             "label": null
         },
@@ -1996,9 +2080,23 @@
             "label": null
         },
         {
+            "from": "flow:method:App\\OrderService::ship#3",
+            "to": "external:app\\baseservice::printlabel",
+            "type": "target",
+            "line": 56,
+            "label": null
+        },
+        {
             "from": "method:App\\OrderService::ship",
             "to": "external:app\\baseservice::reserveshelf",
             "type": "calls",
+            "line": 59,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::ship#4",
+            "to": "external:app\\baseservice::reserveshelf",
+            "type": "target",
             "line": 59,
             "label": null
         },
@@ -2010,9 +2108,23 @@
             "label": null
         },
         {
+            "from": "flow:method:App\\OrderService::ship#5",
+            "to": "external:app\\baseservice::notify",
+            "type": "target",
+            "line": 61,
+            "label": null
+        },
+        {
             "from": "method:App\\OrderService::ship",
             "to": "external:app\\baseservice::eurate",
             "type": "calls",
+            "line": 65,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::ship#7",
+            "to": "external:app\\baseservice::eurate",
+            "type": "target",
             "line": 65,
             "label": null
         },
@@ -2024,9 +2136,23 @@
             "label": null
         },
         {
+            "from": "flow:method:App\\OrderService::ship#8",
+            "to": "external:app\\baseservice::usrate",
+            "type": "target",
+            "line": 66,
+            "label": null
+        },
+        {
             "from": "method:App\\OrderService::validate",
             "to": "external:app\\baseservice::isknowncustomer",
             "type": "calls",
+            "line": 78,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::validate#4",
+            "to": "external:app\\baseservice::isknowncustomer",
+            "type": "target",
             "line": 78,
             "label": null
         },
@@ -2038,9 +2164,23 @@
             "label": null
         },
         {
+            "from": "flow:method:App\\OrderService::validate#6",
+            "to": "external:app\\orderexception::unknowncustomer",
+            "type": "target",
+            "line": 79,
+            "label": null
+        },
+        {
             "from": "method:App\\OrderService::stamp",
             "to": "unresolved:(new Clock())->now()->format",
             "type": "calls",
+            "line": 86,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::stamp#3",
+            "to": "unresolved:(new Clock())->now()->format",
+            "type": "target",
             "line": 86,
             "label": null
         },
@@ -2052,9 +2192,23 @@
             "label": null
         },
         {
+            "from": "flow:method:App\\OrderService::stamp#2",
+            "to": "external:app\\clock::now",
+            "type": "target",
+            "line": 86,
+            "label": null
+        },
+        {
             "from": "method:App\\OrderService::audit",
             "to": "unresolved:sprintf",
             "type": "calls",
+            "line": 92,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::audit#5",
+            "to": "unresolved:sprintf",
+            "type": "target",
             "line": 92,
             "label": null
         },
@@ -2066,9 +2220,23 @@
             "label": null
         },
         {
+            "from": "flow:method:App\\OrderService::audit#2",
+            "to": "unresolved:date",
+            "type": "target",
+            "line": 92,
+            "label": null
+        },
+        {
             "from": "method:App\\OrderService::audit",
             "to": "unresolved:strtolower",
             "type": "calls",
+            "line": 92,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::audit#4",
+            "to": "unresolved:strtolower",
+            "type": "target",
             "line": 92,
             "label": null
         },
@@ -2080,9 +2248,23 @@
             "label": null
         },
         {
+            "from": "flow:method:App\\OrderService::audit#3",
+            "to": "unresolved:trim",
+            "type": "target",
+            "line": 92,
+            "label": null
+        },
+        {
             "from": "method:App\\OrderService::audit",
             "to": "unresolved:error_log",
             "type": "calls",
+            "line": 94,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::audit#6",
+            "to": "unresolved:error_log",
+            "type": "target",
             "line": 94,
             "label": null
         },
@@ -2094,9 +2276,23 @@
             "label": null
         },
         {
+            "from": "flow:method:App\\OrderService::reindex#2",
+            "to": "external:app\\db::transaction",
+            "type": "target",
+            "line": 100,
+            "label": null
+        },
+        {
             "from": "method:App\\OrderService::reindex",
             "to": "external:app\\baseservice::lock",
             "type": "calls",
+            "line": 101,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::reindex#3",
+            "to": "external:app\\baseservice::lock",
+            "type": "target",
             "line": 101,
             "label": null
         },
@@ -2108,9 +2304,23 @@
             "label": null
         },
         {
+            "from": "flow:method:App\\OrderService::reindex#5",
+            "to": "unresolved:collect($rows)->each",
+            "type": "target",
+            "line": 103,
+            "label": null
+        },
+        {
             "from": "method:App\\OrderService::reindex",
             "to": "unresolved:collect",
             "type": "calls",
+            "line": 103,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::reindex#4",
+            "to": "unresolved:collect",
+            "type": "target",
             "line": 103,
             "label": null
         },
@@ -2122,9 +2332,23 @@
             "label": null
         },
         {
+            "from": "flow:method:App\\OrderService::reindex#6",
+            "to": "external:app\\baseservice::touch",
+            "type": "target",
+            "line": 103,
+            "label": null
+        },
+        {
             "from": "method:App\\OrderService::roundMoney",
             "to": "unresolved:round",
             "type": "calls",
+            "line": 119,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::roundMoney#2",
+            "to": "unresolved:round",
+            "type": "target",
             "line": 119,
             "label": null
         },
@@ -2136,9 +2360,23 @@
             "label": null
         },
         {
+            "from": "flow:function:App\\format_money#2",
+            "to": "unresolved:number_format",
+            "type": "target",
+            "line": 126,
+            "label": null
+        },
+        {
             "from": "script:OrderShowcase.php",
             "to": "unresolved:http_response_code",
             "type": "calls",
+            "line": 133,
+            "label": null
+        },
+        {
+            "from": "flow:script:OrderShowcase.php#4",
+            "to": "unresolved:http_response_code",
+            "type": "target",
             "line": 133,
             "label": null
         },
@@ -2150,9 +2388,23 @@
             "label": null
         },
         {
+            "from": "flow:script:OrderShowcase.php#6",
+            "to": "method:App\\OrderService::createOrder",
+            "type": "target",
+            "line": 137,
+            "label": null
+        },
+        {
             "from": "script:OrderShowcase.php",
             "to": "function:App\\format_money",
             "type": "calls",
+            "line": 139,
+            "label": null
+        },
+        {
+            "from": "flow:script:OrderShowcase.php#7",
+            "to": "function:App\\format_money",
+            "type": "target",
             "line": 139,
             "label": null
         }

@@ -39,11 +39,12 @@ final readonly class GraphParts
             }
         }
 
+        // `flow` and `target` edges start at a flow node, so they travel with its flow.
         foreach ($graph->edges() as $edge) {
-            if ($edge->type !== EdgeType::Flow) {
-                $map['edges'][] = $edge;
-            } elseif (isset($parentOf[$edge->from])) {
+            if (isset($parentOf[$edge->from])) {
                 $flowEdges[$parentOf[$edge->from]][] = $edge;
+            } elseif ($edge->type !== EdgeType::Flow) {
+                $map['edges'][] = $edge;
             }
         }
 
