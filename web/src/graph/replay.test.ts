@@ -37,6 +37,10 @@ describe('primaryExit', () => {
     expect(primaryExit([edge('x', 'n', 'p', 'false'), edge('y', 'n', 'q')])?.id).toBe('y')
   })
 
+  it('prefers the value-present side of a null check', () => {
+    expect(primaryExit([edge('x', 'n', 'throws', 'null'), edge('y', 'n', 'goes-on', 'set')])?.id).toBe('y')
+  })
+
   it('prefers a loop body over its exit', () => {
     expect(primaryExit([edge('x', 'loop', 'after', 'exit'), edge('y', 'loop', 'body', 'body')])?.id).toBe('y')
   })

@@ -310,7 +310,8 @@ watch(
 }
 
 .chip-true,
-.chip-body {
+.chip-body,
+.chip-set {
   border-color: rgba(var(--accent-rgb), 0.6);
   color: var(--accent);
 }

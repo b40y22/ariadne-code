@@ -12,7 +12,7 @@ export interface Step {
 export const MAX_STEPS = 500
 
 /** Labels that mark the main path of a branch, preferred when a step is taken without choosing. */
-const PRIMARY_LABELS = new Set(['true', 'body'])
+const PRIMARY_LABELS = new Set(['true', 'body', 'set'])
 
 export function startReplay(startNodeId: string): Step[] {
   return [{ nodeId: startNodeId, viaEdgeId: null, label: null }]

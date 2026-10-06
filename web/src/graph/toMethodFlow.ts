@@ -36,7 +36,7 @@ const EXCEPTIONAL = new Set(['exception', 'throw'])
 /** Labels that return to an earlier node: drawn dashed so loops read as loops. */
 const BACKWARD = new Set(['next', 'continue'])
 /** Labels that carry the main path of a branch. */
-const PRIMARY = new Set(['true', 'body'])
+const PRIMARY = new Set(['true', 'body', 'set'])
 
 /** Flow nodes are numbered in the order they are built, which is also the order of execution. */
 const orderOf = (id: string): number => Number(/#(\d+)$/.exec(id)?.[1] ?? Number.NaN)

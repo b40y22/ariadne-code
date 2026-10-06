@@ -77,7 +77,7 @@ docker compose run --rm php php bin/ariadne analyze path/to/YourClass.php
 
 ### Method flow
 
-Every method with a body also gets its control flow: calls in execution order, joined by `flow` edges. Branch edges carry a `label`: `true`/`false` (conditions), `body`/`next`/`exit`/`continue` (loops), `exception`/`throw` (try/catch).
+Every method with a body also gets its control flow: calls in execution order, joined by `flow` edges. Branch edges carry a `label`: `true`/`false` (conditions), `body`/`next`/`exit`/`continue` (loops), `exception`/`throw` (try/catch), `set`/`null` (`??`, `??=`).
 
 Analyzing [`ShippingService`](tests/fixtures/ShippingService.php) gives, for `ship()`, among others:
 
@@ -94,12 +94,13 @@ condition !$this->inStock($item) -> try                    [false]
 
 Deliberate simplifications (the graph never claims more than it knows):
 
+- Expressions branch where PHP does: `?:` and ternaries (`true`/`false`), `??` and `??=` (`set`/`null`), and `&&`/`||` when their right side calls or throws. A `throw` inside an expression (`$x ?? throw new E()`) leaves the method, so a call after it runs only on the surviving path.
 - `switch`/`match` are not branched: their calls appear in source order as plain steps.
 - Calls in loop headers (`while ($this->next())`) are not steps, because they run on every iteration.
 - `do ... while` is drawn like `while`, with the condition node before the body.
 - Exceptions raised by called methods are unknown, so a `try` links to each of its `catch` blocks.
 - `finally` is reached on normal completion only (not after `return`/`break` inside `try`).
-- Closures and arrow functions add no steps to the enclosing flow.
+- Closures and arrow functions add no steps to the enclosing flow, even when they are passed to something that runs them at once (`DB::transaction(fn () => ...)`).
 - Code after an unconditional `return`/`throw`/`break`/`continue` is unreachable and left out.
 
 What currently resolves: `$this->method()`, `self::method()` and `static::method()` within the same class, case-insensitively. Everything else (calls on other objects, inherited methods, `parent::`, dynamic names such as `$this->$name()`) becomes an `unresolved` node, so the graph never asserts something the code does not prove.
