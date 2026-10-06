@@ -38,11 +38,7 @@ final readonly class AnalyzeEndpoint
     private function only(string $allowed, string $method, callable $handler): ApiResponse
     {
         if ($method !== $allowed) {
-            return new ApiResponse(
-                405,
-                ApiResponse::error(405, sprintf('Use %s.', $allowed))->body,
-                ['Content-Type' => 'application/json; charset=utf-8', 'Allow' => $allowed],
-            );
+            return ApiResponse::error(405, sprintf('Use %s.', $allowed), ['Allow' => $allowed]);
         }
 
         return $handler();

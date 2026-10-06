@@ -33,8 +33,11 @@ final readonly class ApiResponse
         );
     }
 
-    public static function error(int $status, string $message): self
+    /**
+     * @param array<string, string> $headers
+     */
+    public static function error(int $status, string $message, array $headers = []): self
     {
-        return self::json($status, ['error' => $message]);
+        return self::json($status, ['error' => $message], $headers);
     }
 }
