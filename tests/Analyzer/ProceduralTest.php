@@ -8,6 +8,7 @@ use Ariadne\Analyzer\PhpAnalyzer;
 use Ariadne\Graph\EdgeType;
 use Ariadne\Graph\Graph;
 use Ariadne\Graph\NodeType;
+use Ariadne\Tests\Support\Analyzed;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -19,7 +20,7 @@ final class ProceduralTest extends TestCase
     #[Test]
     public function a_function_is_a_node_with_its_location(): void
     {
-        $graph = $this->analyze("function helper()\n{\n    return 1;\n}");
+        $graph = Analyzed::graph("function helper()\n{\n    return 1;\n}");
 
         self::assertSame([['function:helper', 'helper', 2, 5]], $this->nodes($graph, NodeType::Function_));
     }
@@ -27,7 +28,7 @@ final class ProceduralTest extends TestCase
     #[Test]
     public function a_function_has_its_own_flow(): void
     {
-        $graph = $this->analyze('function helper($x) { if ($x) { return a(); } return b(); }');
+        $graph = Analyzed::graph('function helper($x) { if ($x) { return a(); } return b(); }');
 
         $flow = array_values(array_filter(
             $graph->nodes(),
@@ -41,7 +42,7 @@ final class ProceduralTest extends TestCase
     #[Test]
     public function calls_between_functions_are_resolved_ignoring_case_and_order(): void
     {
-        $graph = $this->analyze('function a() { return B(); } function b() { return 1; }');
+        $graph = Analyzed::graph('function a() { return B(); } function b() { return 1; }');
 
         self::assertSame(['function:a -> function:b'], $this->calls($graph));
     }
@@ -49,7 +50,7 @@ final class ProceduralTest extends TestCase
     #[Test]
     public function a_call_to_a_function_that_is_not_declared_stays_unresolved(): void
     {
-        $graph = $this->analyze('function a() { return array_sum([1]); }');
+        $graph = Analyzed::graph('function a() { return array_sum([1]); }');
 
         self::assertSame(['function:a -> unresolved:array_sum'], $this->calls($graph));
     }
@@ -57,7 +58,7 @@ final class ProceduralTest extends TestCase
     #[Test]
     public function a_namespaced_function_is_found_by_its_short_name_inside_the_namespace(): void
     {
-        $graph = $this->analyze("namespace App;\nfunction a() { return b(); }\nfunction b() { return 1; }");
+        $graph = Analyzed::graph("namespace App;\nfunction a() { return b(); }\nfunction b() { return 1; }");
 
         self::assertSame(['function:App\\a -> function:App\\b'], $this->calls($graph));
     }
@@ -65,7 +66,7 @@ final class ProceduralTest extends TestCase
     #[Test]
     public function an_unqualified_call_falls_back_to_the_global_function(): void
     {
-        $graph = $this->analyze('namespace { function helper() { return 1; } } namespace App { function a() { return helper(); } }');
+        $graph = Analyzed::graph('namespace { function helper() { return 1; } } namespace App { function a() { return helper(); } }');
 
         self::assertSame(['function:App\\a -> function:helper'], $this->calls($graph));
     }
@@ -73,7 +74,7 @@ final class ProceduralTest extends TestCase
     #[Test]
     public function a_function_imported_with_use_function_is_resolved(): void
     {
-        $graph = $this->analyze("namespace Lib;\nfunction tool() { return 1; }\nnamespace App;\nuse function Lib\\tool;\nfunction a() { return tool(); }");
+        $graph = Analyzed::graph("namespace Lib;\nfunction tool() { return 1; }\nnamespace App;\nuse function Lib\\tool;\nfunction a() { return tool(); }");
 
         self::assertSame(['function:App\\a -> function:Lib\\tool'], $this->calls($graph));
     }
@@ -81,7 +82,7 @@ final class ProceduralTest extends TestCase
     #[Test]
     public function a_dynamic_function_call_stays_unresolved(): void
     {
-        $graph = $this->analyze('function a($fn) { return $fn(1); }');
+        $graph = Analyzed::graph('function a($fn) { return $fn(1); }');
 
         self::assertSame(['function:a -> unresolved:$fn'], $this->calls($graph));
     }
@@ -89,7 +90,7 @@ final class ProceduralTest extends TestCase
     #[Test]
     public function a_method_can_call_a_function_and_the_other_way_round(): void
     {
-        $graph = $this->analyze('class A { function m() { return helper(); } } function helper() { return (new A())->m(); }');
+        $graph = Analyzed::graph('class A { function m() { return helper(); } } function helper() { return (new A())->m(); }');
 
         self::assertContains('method:A::m -> function:helper', $this->calls($graph));
         self::assertContains('function:helper -> unresolved:(new A())->m', $this->calls($graph));
@@ -98,7 +99,7 @@ final class ProceduralTest extends TestCase
     #[Test]
     public function top_level_code_becomes_a_script_node_with_the_calls_it_makes(): void
     {
-        $graph = $this->analyze("function helper() { return 1; }\n\$x = helper();\necho \$x;");
+        $graph = Analyzed::graph("function helper() { return 1; }\n\$x = helper();\necho \$x;");
 
         self::assertSame([['script:test.php', 'test.php', 3, 4]], $this->nodes($graph, NodeType::Script));
         self::assertSame(['script:test.php -> function:helper'], $this->calls($graph));
@@ -107,7 +108,7 @@ final class ProceduralTest extends TestCase
     #[Test]
     public function the_script_has_its_own_flow_with_a_start_and_an_end(): void
     {
-        $graph = $this->analyze('if ($a) { first(); } else { second(); } third();');
+        $graph = Analyzed::graph('if ($a) { first(); } else { second(); } third();');
 
         $kinds = array_map(
             static fn($node) => $node->type->value,
@@ -120,7 +121,7 @@ final class ProceduralTest extends TestCase
     #[Test]
     public function a_file_with_only_declarations_has_no_script(): void
     {
-        $graph = $this->analyze("declare(strict_types=1);\nnamespace App;\nuse Foo\\Bar;\nclass A {}\nfunction f() {}\ninterface I {}\n");
+        $graph = Analyzed::graph("declare(strict_types=1);\nnamespace App;\nuse Foo\\Bar;\nclass A {}\nfunction f() {}\ninterface I {}\n");
 
         self::assertSame([], $this->nodes($graph, NodeType::Script));
     }
@@ -136,7 +137,7 @@ final class ProceduralTest extends TestCase
     #[Test]
     public function the_script_sees_through_namespaces(): void
     {
-        $graph = $this->analyze("namespace App { function f() {} f(); }");
+        $graph = Analyzed::graph("namespace App { function f() {} f(); }");
 
         self::assertSame(['script:test.php -> function:App\\f'], $this->calls($graph));
     }
@@ -144,7 +145,7 @@ final class ProceduralTest extends TestCase
     #[Test]
     public function calls_inside_classes_are_not_attributed_to_the_script(): void
     {
-        $graph = $this->analyze('class A { public $x = 1; function m() { return strlen("x"); } } interface I { function i(); } trait T { function t() { return strtoupper("x"); } } $o = new class { function a() { return strrev("x"); } };');
+        $graph = Analyzed::graph('class A { public $x = 1; function m() { return strlen("x"); } } interface I { function i(); } trait T { function t() { return strtoupper("x"); } } $o = new class { function a() { return strrev("x"); } };');
 
         $fromScript = array_values(array_filter(
             $this->calls($graph),
@@ -158,7 +159,7 @@ final class ProceduralTest extends TestCase
     #[Test]
     public function a_closure_at_the_top_level_belongs_to_the_script(): void
     {
-        $graph = $this->analyze('$f = function () { return helper(); }; function helper() {}');
+        $graph = Analyzed::graph('$f = function () { return helper(); }; function helper() {}');
 
         self::assertSame(['script:test.php -> function:helper'], $this->calls($graph));
     }
@@ -166,7 +167,7 @@ final class ProceduralTest extends TestCase
     #[Test]
     public function a_function_declared_conditionally_is_still_found(): void
     {
-        $graph = $this->analyze('if (!function_exists("shim")) { function shim() { return 1; } } shim();');
+        $graph = Analyzed::graph('if (!function_exists("shim")) { function shim() { return 1; } } shim();');
 
         self::assertContains('script:test.php -> function:shim', $this->calls($graph));
     }
@@ -209,7 +210,7 @@ final class ProceduralTest extends TestCase
     #[Test]
     public function every_flow_node_of_a_script_is_reachable(): void
     {
-        $graph = $this->analyze('foreach ($a as $b) { if ($b) { continue; } try { f(); } catch (\E $e) { exit(1); } } done();');
+        $graph = Analyzed::graph('foreach ($a as $b) { if ($b) { continue; } try { f(); } catch (\E $e) { exit(1); } } done();');
 
         $reachable = ['flow:script:test.php#1' => true];
 
@@ -228,35 +229,6 @@ final class ProceduralTest extends TestCase
         }
     }
 
-    private function analyze(string $code): Graph
-    {
-        return (new PhpAnalyzer())->analyze("<?php\n" . $code, 'test.php');
-    }
-
-    /**
-     * Flow edges of the script, as "from -> to [label]".
-     *
-     * @return list<string>
-     */
-    private function flow(string $code): array
-    {
-        $graph = $this->analyze($code);
-        $names = [];
-
-        foreach ($graph->nodes() as $node) {
-            $names[$node->id] = in_array($node->type, [NodeType::Start, NodeType::End], true) ? $node->type->value : $node->type->value . ' ' . $node->name;
-        }
-
-        $edges = [];
-
-        foreach ($graph->edges() as $edge) {
-            if ($edge->type === EdgeType::Flow) {
-                $edges[] = $names[$edge->from] . ' -> ' . $names[$edge->to] . ($edge->label !== null ? ' [' . $edge->label . ']' : '');
-            }
-        }
-
-        return $edges;
-    }
 
     /**
      * @return list<array{string, string, int|null, int|null}>
@@ -288,5 +260,15 @@ final class ProceduralTest extends TestCase
         }
 
         return $calls;
+    }
+
+    /**
+     * Flow edges of the script, as "from -> to [label]".
+     *
+     * @return list<string>
+     */
+    private function flow(string $code): array
+    {
+        return Analyzed::flow(Analyzed::graph($code));
     }
 }

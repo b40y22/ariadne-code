@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace Ariadne\Tests\Analyzer;
 
-use Ariadne\Analyzer\PhpAnalyzer;
 use Ariadne\Graph\EdgeType;
 use Ariadne\Graph\Graph;
 use Ariadne\Graph\NodeType;
+use Ariadne\Tests\Support\Analyzed;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
@@ -126,7 +126,7 @@ final class MethodFlowTest extends TestCase
     #[Test]
     public function every_loop_kind_gets_a_loop_node(): void
     {
-        $graph = $this->analyze('class A { function a($x) { while ($x) {} do {} while ($x); for ($i = 0; $i < 3; $i++) {} } }');
+        $graph = Analyzed::graph('class A { function a($x) { while ($x) {} do {} while ($x); for ($i = 0; $i < 3; $i++) {} } }');
 
         self::assertSame(
             ['while ($x)', 'do-while ($x)', 'for ($i = 0; $i < 3; $i++)'],
@@ -255,7 +255,7 @@ final class MethodFlowTest extends TestCase
     #[Test]
     public function long_labels_are_truncated(): void
     {
-        $graph = $this->analyze('class A { function a($x) { if ($x === "' . str_repeat('a', 100) . '") {} } }');
+        $graph = Analyzed::graph('class A { function a($x) { if ($x === "' . str_repeat('a', 100) . '") {} } }');
 
         [$label] = $this->names($graph, NodeType::Condition);
 
@@ -266,7 +266,7 @@ final class MethodFlowTest extends TestCase
     #[Test]
     public function flow_nodes_belong_to_their_method_and_carry_source_lines(): void
     {
-        $graph = $this->analyze("class A\n{\n    function a()\n    {\n        \$this->b();\n    }\n\n    function b() {}\n}");
+        $graph = Analyzed::graph("class A\n{\n    function a()\n    {\n        \$this->b();\n    }\n\n    function b() {}\n}");
 
         $nodes = [];
 
@@ -283,7 +283,7 @@ final class MethodFlowTest extends TestCase
     #[Test]
     public function abstract_methods_have_no_flow(): void
     {
-        $graph = $this->analyze('abstract class A { abstract function a(); }');
+        $graph = Analyzed::graph('abstract class A { abstract function a(); }');
 
         self::assertSame([], $this->names($graph, NodeType::Start));
     }
@@ -291,7 +291,7 @@ final class MethodFlowTest extends TestCase
     #[Test]
     public function every_flow_node_is_reachable_from_start(): void
     {
-        $graph = $this->analyze(<<<'PHP'
+        $graph = Analyzed::graph(<<<'PHP'
             class A
             {
                 function a($x)
@@ -755,40 +755,7 @@ final class MethodFlowTest extends TestCase
         ], $flow);
     }
 
-    /**
-     * Flow edges of method "A::a" as "from -> to [label]" strings, in creation order.
-     * Start and end print as their type, other nodes as "type name".
-     *
-     * @return list<string>
-     */
-    private function flow(string $method): array
-    {
-        $graph = $this->analyze('class A { ' . $method . ' }');
 
-        $names = [];
-
-        foreach ($graph->nodes() as $node) {
-            $names[$node->id] = match ($node->type) {
-                NodeType::Start, NodeType::End => $node->type->value,
-                default => $node->type->value . ' ' . $node->name,
-            };
-        }
-
-        $edges = [];
-
-        foreach ($graph->edges() as $edge) {
-            if ($edge->type === EdgeType::Flow) {
-                $edges[] = $names[$edge->from] . ' -> ' . $names[$edge->to] . ($edge->label !== null ? ' [' . $edge->label . ']' : '');
-            }
-        }
-
-        return $edges;
-    }
-
-    private function analyze(string $code): Graph
-    {
-        return (new PhpAnalyzer())->analyze("<?php\n" . $code, 'test.php');
-    }
 
     /**
      * @return list<string>
@@ -804,5 +771,15 @@ final class MethodFlowTest extends TestCase
         }
 
         return $names;
+    }
+
+    /**
+     * Flow edges of method "A::a" as "from -> to [label]" strings, in creation order.
+     *
+     * @return list<string>
+     */
+    private function flow(string $method): array
+    {
+        return Analyzed::flow(Analyzed::graph('class A { ' . $method . ' }'));
     }
 }

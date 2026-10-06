@@ -9,6 +9,7 @@ use Ariadne\Analyzer\PhpAnalyzer;
 use Ariadne\Graph\EdgeType;
 use Ariadne\Graph\Graph;
 use Ariadne\Graph\NodeType;
+use Ariadne\Tests\Support\Analyzed;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
@@ -80,7 +81,7 @@ final class PhpAnalyzerTest extends TestCase
     #[Test]
     public function it_resolves_calls_to_methods_declared_later_in_the_class(): void
     {
-        $graph = $this->analyze('class A { function a() { $this->b(); } function b() {} }');
+        $graph = Analyzed::graph('class A { function a() { $this->b(); } function b() {} }');
 
         self::assertSame(['A::a -> A::b'], $this->calls($graph));
     }
@@ -88,7 +89,7 @@ final class PhpAnalyzerTest extends TestCase
     #[Test]
     public function method_names_are_case_insensitive(): void
     {
-        $graph = $this->analyze('class A { function a() { $this->B(); } function b() {} }');
+        $graph = Analyzed::graph('class A { function a() { $this->B(); } function b() {} }');
 
         self::assertSame(['A::a -> A::b'], $this->calls($graph));
     }
@@ -96,7 +97,7 @@ final class PhpAnalyzerTest extends TestCase
     #[Test]
     public function self_and_static_calls_resolve_to_the_current_class(): void
     {
-        $graph = $this->analyze('class A { function a() { self::b(); static::b(); } static function b() {} }');
+        $graph = Analyzed::graph('class A { function a() { self::b(); static::b(); } static function b() {} }');
 
         self::assertSame(['A::a -> A::b', 'A::a -> A::b'], $this->calls($graph));
     }
@@ -104,7 +105,7 @@ final class PhpAnalyzerTest extends TestCase
     #[Test]
     public function calls_that_leave_the_class_stay_unresolved(): void
     {
-        $graph = $this->analyze(<<<'PHP'
+        $graph = Analyzed::graph(<<<'PHP'
             namespace N;
 
             use Other\Foo;
@@ -125,7 +126,7 @@ final class PhpAnalyzerTest extends TestCase
     #[Test]
     public function inherited_methods_are_not_guessed(): void
     {
-        $graph = $this->analyze('class A extends B { function a() { $this->fromParent(); } }');
+        $graph = Analyzed::graph('class A extends B { function a() { $this->fromParent(); } }');
 
         self::assertSame(['A::a -> unresolved:$this->fromParent'], $this->calls($graph));
     }
@@ -133,7 +134,7 @@ final class PhpAnalyzerTest extends TestCase
     #[Test]
     public function dynamic_method_names_stay_unresolved(): void
     {
-        $graph = $this->analyze('class A { function a() { $this->$name(); } function name() {} }');
+        $graph = Analyzed::graph('class A { function a() { $this->$name(); } function name() {} }');
 
         self::assertSame(['A::a -> unresolved:$this->$name'], $this->calls($graph));
     }
@@ -141,7 +142,7 @@ final class PhpAnalyzerTest extends TestCase
     #[Test]
     public function nullsafe_calls_keep_their_operator(): void
     {
-        $graph = $this->analyze('class A { function a() { $this->repo?->save(); } }');
+        $graph = Analyzed::graph('class A { function a() { $this->repo?->save(); } }');
 
         self::assertSame(['A::a -> unresolved:$this->repo?->save'], $this->calls($graph));
     }
@@ -149,7 +150,7 @@ final class PhpAnalyzerTest extends TestCase
     #[Test]
     public function calls_inside_anonymous_classes_are_not_attributed(): void
     {
-        $graph = $this->analyze(<<<'PHP'
+        $graph = Analyzed::graph(<<<'PHP'
             class A
             {
                 function a()
@@ -169,7 +170,7 @@ final class PhpAnalyzerTest extends TestCase
     #[Test]
     public function calls_inside_closures_belong_to_the_enclosing_method(): void
     {
-        $graph = $this->analyze(<<<'PHP'
+        $graph = Analyzed::graph(<<<'PHP'
             class A
             {
                 function a()
@@ -189,7 +190,7 @@ final class PhpAnalyzerTest extends TestCase
     #[Test]
     public function repeated_unresolved_calls_share_one_node_but_keep_each_call_site(): void
     {
-        $graph = $this->analyze(<<<'PHP'
+        $graph = Analyzed::graph(<<<'PHP'
             class A
             {
                 function a()
@@ -214,7 +215,7 @@ final class PhpAnalyzerTest extends TestCase
     #[Test]
     public function it_records_source_locations(): void
     {
-        $graph = $this->analyze("class A\n{\n    function a()\n    {\n    }\n}");
+        $graph = Analyzed::graph("class A\n{\n    function a()\n    {\n    }\n}");
         $nodes = [];
 
         foreach ($graph->nodes() as $node) {
@@ -232,13 +233,9 @@ final class PhpAnalyzerTest extends TestCase
         $this->expectException(AnalysisException::class);
         $this->expectExceptionMessage('test.php');
 
-        $this->analyze('class A {');
+        Analyzed::graph('class A {');
     }
 
-    private function analyze(string $code): Graph
-    {
-        return (new PhpAnalyzer())->analyze("<?php\n" . $code, 'test.php');
-    }
 
     /**
      * Calls as "caller -> callee" strings, without the "method:" id prefix.
