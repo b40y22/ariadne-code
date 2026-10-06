@@ -72,6 +72,18 @@ describe('toClassMap', () => {
     expect(edges.every((e) => e.class?.toString().includes('ariadne-edge-calls'))).toBe(true)
   })
 
+  it('can leave out unresolved calls together with the edges that lead to them', () => {
+    const { nodes, edges } = toClassMap(graph, { includeUnresolved: false })
+
+    expect(nodes.map((n) => n.id)).toEqual(['class:A', 'method:A::a', 'method:A::b'])
+    expect(edges.map((e) => e.target)).toEqual(['method:A::b'])
+  })
+
+  it('includes unresolved calls unless told otherwise', () => {
+    expect(toClassMap(graph).nodes.some((n) => n.id === 'unresolved:$x->go')).toBe(true)
+    expect(toClassMap(graph, {}).edges.some((e) => e.target === 'unresolved:$x->go')).toBe(true)
+  })
+
   it('collapses repeated calls into one edge with a count', () => {
     const { edges } = toClassMap(graph)
     const call = edges.find((e) => e.source === 'method:A::a' && e.target === 'method:A::b')

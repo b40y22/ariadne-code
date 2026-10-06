@@ -1,12 +1,12 @@
 <script setup lang="ts">
-defineProps<{ mode: 'map' | 'flow' }>()
+withDefaults(defineProps<{ mode: 'map' | 'flow'; unresolved?: boolean }>(), { unresolved: true })
 </script>
 
 <template>
   <ul v-if="mode === 'map'" class="legend" aria-label="Legend">
     <li><span class="swatch call" />call</li>
     <li><span class="swatch group" />class</li>
-    <li><span class="swatch unresolved" />unresolved</li>
+    <li v-if="unresolved"><span class="swatch unresolved" />unresolved</li>
     <li class="hint">double-click a method to open its flow</li>
   </ul>
   <ul v-else class="legend" aria-label="Legend">

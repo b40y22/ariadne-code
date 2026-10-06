@@ -47,8 +47,13 @@ function describe(node: GraphNode, methodCount: number): CodeNodeData {
  * Method flow nodes are left out; they get their own view.
  *
  * Repeated calls between the same two methods collapse into one edge labelled "×N".
+ *
+ * Calls the analyzer could not resolve end in `unresolved` nodes. They are often the majority (every builtin and
+ * every call on another object), so the map can leave them out; the edges to them go with them.
  */
-export function toClassMap(graph: Graph): { nodes: CodeNode[]; edges: Edge[] } {
+export function toClassMap(graph: Graph, options: { includeUnresolved?: boolean } = {}): { nodes: CodeNode[]; edges: Edge[] } {
+  const includeUnresolved = options.includeUnresolved ?? true
+
   const methodCounts = new Map<string, number>()
   const classOf = new Map<string, string>()
 
@@ -60,7 +65,7 @@ export function toClassMap(graph: Graph): { nodes: CodeNode[]; edges: Edge[] } {
   }
 
   const nodes: CodeNode[] = graph.nodes
-    .filter((node) => CLASS_MAP_TYPES.has(node.type))
+    .filter((node) => CLASS_MAP_TYPES.has(node.type) && (includeUnresolved || node.type !== 'unresolved'))
     .map((node) => {
       const parent = classOf.get(node.id)
 

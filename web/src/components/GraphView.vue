@@ -23,6 +23,8 @@ const props = defineProps<{
   visited?: ReadonlySet<string>
   fileName: string
   mode: 'map' | 'flow'
+  /** Whether the map currently shows unresolved calls, so the legend can mention them. */
+  unresolved?: boolean
 }>()
 const emit = defineEmits<{ select: [id: string]; open: [id: string] }>()
 
@@ -160,7 +162,7 @@ defineExpose({ resetLayout })
       </template>
       <Background :gap="22" :size="1.3" :pattern-color="theme.dot" />
     </VueFlow>
-    <GraphLegend :mode="mode" />
+    <GraphLegend :mode="mode" :unresolved="unresolved" />
   </div>
 </template>
 

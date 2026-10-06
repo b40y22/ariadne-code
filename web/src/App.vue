@@ -31,6 +31,11 @@ const error = ref<string | null>(null)
 const loading = ref(false)
 const graphView = ref<InstanceType<typeof GraphView>>()
 
+// Unresolved calls are hidden on the class map until asked for: there are often more of them than real nodes.
+const UNRESOLVED_KEY = 'ariadne:show-unresolved'
+const showUnresolved = ref(localStorage.getItem(UNRESOLVED_KEY) === '1')
+const unresolvedCount = computed(() => graph.value?.nodes.filter((node) => node.type === 'unresolved').length ?? 0)
+
 // --- Execution replay: a walk through the method flow, one step at a time.
 const path = ref<Step[]>([])
 const flowData = computed(() => new Map(nodes.value.map((node) => [node.id, node.data as FlowNodeData])))
@@ -116,7 +121,14 @@ const HAS_FLOW: ReadonlySet<string> = new Set(['method', 'function', 'script'])
 const flowMethodId = computed(() => (view.value.kind === 'flow' ? view.value.methodId : undefined))
 
 // Each method flow keeps its own saved layout next to the class map's.
-const layoutId = computed(() => (flowMethodId.value === undefined ? fileName.value : `${fileName.value}#${flowMethodId.value}`))
+// The class map keeps one layout with unresolved calls and one without, since they place different nodes.
+const layoutId = computed(() => {
+  if (flowMethodId.value !== undefined) {
+    return `${fileName.value}#${flowMethodId.value}`
+  }
+
+  return showUnresolved.value ? `${fileName.value}#unresolved` : fileName.value
+})
 
 const selectedMethodId = computed(() => {
   const node = graph.value?.nodes.find((candidate) => candidate.id === selected.value?.id)
@@ -181,7 +193,7 @@ async function show(result: Graph, next: View): Promise<boolean> {
     path.value = entry === undefined ? [] : startReplay(entry.id)
   } else {
     path.value = []
-    const map = toClassMap(result)
+    const map = toClassMap(result, { includeUnresolved: showUnresolved.value })
 
     nodes.value = await layout(map.nodes, map.edges)
     edges.value = map.edges
@@ -241,6 +253,20 @@ async function openFlow(methodId: string): Promise<void> {
 
   error.value = null
   await show(current, { kind: 'flow', methodId })
+}
+
+async function toggleUnresolved(): Promise<void> {
+  showUnresolved.value = !showUnresolved.value
+
+  try {
+    localStorage.setItem(UNRESOLVED_KEY, showUnresolved.value ? '1' : '0')
+  } catch {
+    // The choice just won't be remembered.
+  }
+
+  if (graph.value !== null && view.value.kind === 'map') {
+    await show(graph.value, MAP)
+  }
 }
 
 async function backToMap(): Promise<void> {
@@ -353,15 +379,26 @@ onMounted(run)
           <template v-if="breadcrumb.cls"><span class="crumb-class">{{ breadcrumb.cls }}</span> › </template>{{ breadcrumb.method }}
         </span>
       </template>
-      <button
-        v-else
-        type="button"
-        class="button"
-        :disabled="selectedMethodId === undefined"
-        @click="selectedMethodId !== undefined && openFlow(selectedMethodId)"
-      >
-        Show flow
-      </button>
+      <template v-else>
+        <button
+          type="button"
+          class="button"
+          :disabled="selectedMethodId === undefined"
+          @click="selectedMethodId !== undefined && openFlow(selectedMethodId)"
+        >
+          Show flow
+        </button>
+        <button
+          type="button"
+          class="button toggle"
+          :aria-pressed="showUnresolved"
+          :disabled="graph === null"
+          title="Calls the analyzer could not trace to a declaration: builtins and calls on other objects"
+          @click="toggleUnresolved"
+        >
+          Unresolved ({{ unresolvedCount }})
+        </button>
+      </template>
       <span class="file">{{ fileName }}</span>
       <span v-if="error" class="error" role="alert">{{ error }}</span>
     </header>
@@ -377,6 +414,7 @@ onMounted(run)
             :visited="visited"
             :file-name="layoutId"
             :mode="view.kind"
+            :unresolved="showUnresolved"
             @select="onGraphSelect"
             @open="openFlow"
           />
@@ -472,6 +510,11 @@ onMounted(run)
 
 .button.primary:hover:not(:disabled) {
   background: #ff7d36;
+}
+
+.button.toggle[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: rgba(var(--accent-rgb), 0.14);
 }
 
 .button:disabled {
