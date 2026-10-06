@@ -121,6 +121,8 @@ What currently resolves: `$this->method()`, `self::method()` and `static::method
 
 ## Development
 
+**CI.** Forgejo runs [`.forgejo/workflows/ci.yml`](.forgejo/workflows/ci.yml) and GitHub runs [`.github/workflows/ci.yml`](.github/workflows/ci.yml). They are separate files because the Forgejo runner is a plain `node:20-bookworm` image and `code.forgejo.org` mirrors `actions/checkout` but not `setup-php` or `setup-node`, so there PHP 8.5 comes from the sury.org apt repository ([`ci/install-php.sh`](ci/install-php.sh)). Both run Pint, PHPStan and PHPUnit, then the web app's types, tests and build. To try the Forgejo steps locally, run them in that image: `docker run --rm -v "$PWD":/work -w /work node:20-bookworm ci/install-php.sh`.
+
 **The showcase.** [`tests/fixtures/OrderShowcase.php`](tests/fixtures/OrderShowcase.php) is the demo class the UI opens with, and its graph is pinned by a snapshot test. Every construct the analyzer understands appears in it. When you teach the analyzer something new, add an example of it there, run `make snapshots`, review the diff, and open the method in the UI: a feature that is not visible in the demo is not finished. A test fails if the showcase stops covering a kind of branch.
 
 ```bash
