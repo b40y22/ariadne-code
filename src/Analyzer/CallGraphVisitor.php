@@ -10,16 +10,10 @@ use Ariadne\Graph\Graph;
 use Ariadne\Graph\Node;
 use Ariadne\Graph\NodeType;
 use PhpParser\Node as AstNode;
-use PhpParser\Node\Expr\MethodCall;
-use PhpParser\Node\Expr\NullsafeMethodCall;
-use PhpParser\Node\Expr\StaticCall;
-use PhpParser\Node\Expr\Variable;
-use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt\Class_;
 use PhpParser\Node\Stmt\ClassMethod;
 use PhpParser\NodeVisitorAbstract;
-use PhpParser\PrettyPrinter\Standard;
 
 /**
  * Collects classes, their methods and the calls made from those methods.
@@ -41,11 +35,11 @@ final class CallGraphVisitor extends NodeVisitorAbstract
     /** @var list<PendingCall> */
     private array $pendingCalls = [];
 
-    private readonly Standard $printer;
+    private readonly CallSiteReader $reader;
 
     public function __construct(private readonly Graph $graph, private readonly string $file)
     {
-        $this->printer = new Standard();
+        $this->reader = new CallSiteReader();
     }
 
     public function enterNode(AstNode $node): null
@@ -138,29 +132,18 @@ final class CallGraphVisitor extends NodeVisitorAbstract
             return;
         }
 
-        if ($node instanceof MethodCall || $node instanceof NullsafeMethodCall) {
-            $isLocal = $node instanceof MethodCall
-                && $node->var instanceof Variable
-                && $node->var->name === 'this';
-            $operator = $node instanceof NullsafeMethodCall ? '?->' : '->';
-            $label = $this->printer->prettyPrintExpr($node->var) . $operator . $this->printName($node->name);
-        } elseif ($node instanceof StaticCall) {
-            $isLocal = $node->class instanceof Name
-                && in_array($node->class->toLowerString(), ['self', 'static'], true);
-            $target = $node->class instanceof Name
-                ? $node->class->toString()
-                : $this->printer->prettyPrintExpr($node->class);
-            $label = $target . '::' . $this->printName($node->name);
-        } else {
+        $site = $this->reader->read($node);
+
+        if ($site === null) {
             return;
         }
 
         $this->pendingCalls[] = new PendingCall(
             fromMethodId: $this->method,
             class: $this->class,
-            localMethod: $isLocal && $node->name instanceof Identifier ? $node->name->toLowerString() : null,
-            label: $label,
-            line: $node->getStartLine(),
+            localMethod: $site->localMethod,
+            label: $site->label,
+            line: $site->line,
         );
     }
 
@@ -179,13 +162,6 @@ final class CallGraphVisitor extends NodeVisitorAbstract
         }
 
         $this->graph->addEdge(new Edge($call->fromMethodId, $targetId, EdgeType::Calls, $call->line));
-    }
-
-    private function printName(Identifier|AstNode $name): string
-    {
-        return $name instanceof Identifier
-            ? $name->toString()
-            : $this->printer->prettyPrint([$name]);
     }
 
     private static function classId(string $class): string
