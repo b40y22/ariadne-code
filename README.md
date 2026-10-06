@@ -1,5 +1,9 @@
 # Ariadne Code
 
+[![CI](https://github.com/b40y22/ariadne-code/actions/workflows/ci.yml/badge.svg)](https://github.com/b40y22/ariadne-code/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![PHP 8.5](https://img.shields.io/badge/php-8.5-777bb4.svg)
+
 Static analyzer that turns PHP source into a language-agnostic **Code Graph**: the thread through the labyrinth of legacy code.
 
 ![Ariadne Code: class map next to the source code](docs/screenshot.png)
