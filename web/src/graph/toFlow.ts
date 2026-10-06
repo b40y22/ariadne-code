@@ -31,34 +31,42 @@ function describe(node: GraphNode, methodCount: number): CodeNodeData {
 }
 
 /**
- * The class map: classes, their methods and the calls between them.
+ * The class map: classes as containers holding their methods, and the calls between them.
+ * A method sits inside its class, so `contains` edges are not drawn.
  * Method flow nodes are left out; they get their own view.
  *
  * Repeated calls between the same two methods collapse into one edge labelled "×N".
  */
 export function toClassMap(graph: Graph): { nodes: CodeNode[]; edges: Edge[] } {
   const methodCounts = new Map<string, number>()
+  const classOf = new Map<string, string>()
 
   for (const edge of graph.edges) {
     if (edge.type === 'contains') {
       methodCounts.set(edge.from, (methodCounts.get(edge.from) ?? 0) + 1)
+      classOf.set(edge.to, edge.from)
     }
   }
 
   const nodes: CodeNode[] = graph.nodes
     .filter((node) => CLASS_MAP_TYPES.has(node.type))
-    .map((node) => ({
-      id: node.id,
-      type: 'code',
-      data: describe(node, methodCounts.get(node.id) ?? 0),
-      position: { x: 0, y: 0 },
-    }))
+    .map((node) => {
+      const parent = classOf.get(node.id)
+
+      return {
+        id: node.id,
+        type: node.type === 'class' ? 'class-group' : 'code',
+        data: describe(node, methodCounts.get(node.id) ?? 0),
+        position: { x: 0, y: 0 },
+        ...(parent === undefined ? {} : { parentNode: parent, extent: 'parent' as const }),
+      }
+    })
 
   const known = new Set(nodes.map((node) => node.id))
   const merged = new Map<string, { source: string; target: string; type: string; count: number }>()
 
   for (const edge of graph.edges) {
-    if (edge.type === 'flow' || !known.has(edge.from) || !known.has(edge.to)) {
+    if (edge.type !== 'calls' || !known.has(edge.from) || !known.has(edge.to)) {
       continue
     }
 

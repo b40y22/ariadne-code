@@ -1,7 +1,7 @@
 <template>
   <ul class="legend" aria-label="Legend">
     <li><span class="swatch call" />call</li>
-    <li><span class="swatch contains" />declares</li>
+    <li><span class="swatch group" />class</li>
     <li><span class="swatch unresolved" />unresolved</li>
   </ul>
 </template>
@@ -37,8 +37,11 @@
   border-top: 2px solid var(--accent);
 }
 
-.swatch.contains {
-  border-top: 2px dashed var(--dim);
+.swatch.group {
+  height: 12px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .swatch.unresolved {

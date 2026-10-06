@@ -5,6 +5,7 @@ import { shallowRef, watch } from 'vue'
 
 import { applyPositions, clearPositions, layoutKey, loadPositions, savePositions } from '../graph/positions'
 import { theme } from '../theme'
+import ClassGroup from './ClassGroup.vue'
 import CodeNode from './CodeNode.vue'
 import GraphLegend from './GraphLegend.vue'
 
@@ -87,6 +88,9 @@ defineExpose({ resetLayout })
       :nodes-connectable="false"
       :elements-selectable="false"
     >
+      <template #node-class-group="nodeProps">
+        <ClassGroup :data="nodeProps.data" />
+      </template>
       <template #node-code="nodeProps">
         <CodeNode :data="nodeProps.data" />
       </template>
@@ -110,11 +114,6 @@ defineExpose({ resetLayout })
 .ariadne-edge-calls .vue-flow__edge-path {
   stroke: var(--accent);
   filter: drop-shadow(0 0 3px rgba(var(--accent-rgb), 0.45));
-}
-
-.ariadne-edge-contains .vue-flow__edge-path {
-  stroke: var(--dim);
-  stroke-dasharray: 5 5;
 }
 
 .vue-flow__edge-textbg {

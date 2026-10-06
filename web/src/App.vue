@@ -16,10 +16,7 @@ const code = ref(SAMPLE_CODE)
 const fileName = ref(SAMPLE_FILE)
 const graph = ref<Graph | null>(null)
 const nodes = shallowRef<Node[]>([])
-const allEdges = shallowRef<Edge[]>([])
-const showDeclares = ref(false)
-// Declarations are drawn only on request: they cut across the call flow that the layout follows.
-const edges = computed<Edge[]>(() => (showDeclares.value ? allEdges.value : allEdges.value.filter(isCall)))
+const edges = shallowRef<Edge[]>([])
 const selected = ref<{ id: string; reveal: boolean } | null>(null)
 const error = ref<string | null>(null)
 const loading = ref(false)
@@ -35,8 +32,6 @@ const highlight = computed<Highlight | null>(() => {
   return { start: node.lineStart, end: node.lineEnd, reveal: selected.value?.reveal ?? false }
 })
 
-const isCall = (edge: Edge): boolean => edge.class?.toString().includes('ariadne-edge-calls') ?? false
-
 async function run(): Promise<void> {
   loading.value = true
   error.value = null
@@ -45,8 +40,8 @@ async function run(): Promise<void> {
     const result = await analyze(code.value, fileName.value)
     const map = toClassMap(result)
 
-    nodes.value = await layout(map.nodes, map.edges.filter(isCall))
-    allEdges.value = map.edges
+    nodes.value = await layout(map.nodes, map.edges)
+    edges.value = map.edges
     graph.value = result
     selected.value = null
   } catch (failure) {
@@ -142,15 +137,6 @@ onMounted(run)
       <button type="button" class="button" :disabled="graph === null" @click="graphView?.resetLayout()">
         Reset layout
       </button>
-      <button
-        type="button"
-        class="button toggle"
-        :aria-pressed="showDeclares"
-        :disabled="graph === null"
-        @click="showDeclares = !showDeclares"
-      >
-        Declarations
-      </button>
       <span class="file">{{ fileName }}</span>
       <span v-if="error" class="error" role="alert">{{ error }}</span>
     </header>
@@ -243,11 +229,6 @@ onMounted(run)
 
 .button.primary:hover:not(:disabled) {
   background: #ff7d36;
-}
-
-.button.toggle[aria-pressed='true'] {
-  border-color: var(--accent);
-  background: rgba(var(--accent-rgb), 0.14);
 }
 
 .button:disabled {

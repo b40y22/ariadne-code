@@ -2,7 +2,8 @@ import type { Node } from '@vue-flow/core'
 
 export type Positions = Record<string, { x: number; y: number }>
 
-const PREFIX = 'ariadne:layout:'
+// v2: classes became containers, so positions saved by the flat layout no longer fit.
+const PREFIX = 'ariadne:layout:v2:'
 
 export const layoutKey = (fileName: string): string => PREFIX + fileName
 

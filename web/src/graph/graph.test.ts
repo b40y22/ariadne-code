@@ -61,6 +61,17 @@ describe('toClassMap', () => {
     expect(byId.get('unresolved:$x->go')?.kind).toBe('unresolved')
   })
 
+  it('nests methods inside their class instead of drawing containment edges', () => {
+    const { nodes, edges } = toClassMap(graph)
+    const byId = new Map(nodes.map((n) => [n.id, n]))
+
+    expect(byId.get('method:A::a')).toMatchObject({ parentNode: 'class:A', extent: 'parent', type: 'code' })
+    expect(byId.get('class:A')).toMatchObject({ type: 'class-group' })
+    expect(byId.get('class:A')?.parentNode).toBeUndefined()
+    expect(byId.get('unresolved:$x->go')?.parentNode).toBeUndefined()
+    expect(edges.every((e) => e.class?.toString().includes('ariadne-edge-calls'))).toBe(true)
+  })
+
   it('collapses repeated calls into one edge with a count', () => {
     const { edges } = toClassMap(graph)
     const call = edges.find((e) => e.source === 'method:A::a' && e.target === 'method:A::b')
