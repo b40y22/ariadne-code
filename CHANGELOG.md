@@ -11,6 +11,7 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - **Typed receivers.** Calls on typed and promoted properties, `@var` docblocks, legacy properties assigned a typed constructor parameter or a `new` object, typed parameters never reassigned, `(new Foo())->m()`, and chains of such properties.
 - **`external` nodes** for calls into classes outside the analyzed files (libraries, the framework), shown and hidden on the class map together with unresolved calls.
 - **Project mode** (`make up PROJECT=path`, then `/?project`): the API reads a mounted directory, serves its map, flows and sources on demand, and caches the analysis until a file changes. The UI focuses the map on one class with its callers and callees, and the editor follows the selection across files. A small demo project is the default.
+- **Return types and local variables.** Chains follow declared return types and `@return` docblocks (`$this->repo->find($id)->markPaid()`, `Order::query()->first()`), and a local variable has a class when every value it is given agrees: a typed parameter, `new Foo()`, a caught exception, another variable or a call with a known return type. Script code has variables too.
 - **Step into a call.** Each call step of a flow has a `target` edge to what it calls. In the UI a step that reaches a method of the analyzed code is marked; double-click it, or press **Open call** (also during a replay), to open that method's flow, and go back the same way.
 
 ### Fixed

@@ -150,14 +150,14 @@ All the analyzed files form one project: a call in one file reaches a method dec
 
 - `$this->m()`, `self::m()`, `static::m()`, `parent::m()`, `Foo::m()` and `(new Foo())->m()`;
 - `$this->repo->m()` when the property's class is guaranteed: a declared type (also on a promoted constructor parameter), a `@var Repo` docblock, or, in legacy code with neither, every `$this->repo = ...` in the class assigning a parameter typed `Repo` or a `new Repo()`;
-- `$repo->m()` when `$repo` is a parameter typed with a class and never assigned in the body; closures see their own typed parameters and the ones they capture with `use`;
-- chains of such properties: `$this->billing->invoices->show()`.
+- `$repo->m()` when every value `$repo` is given agrees on one class: a typed parameter, `new Repo()`, `catch (RepoException $e)`, another variable, or a call whose return type is known (`$order = $this->repo->find($id)`). One other value anywhere in the body (`null`, a `foreach`, a reference) and it has no class. Closures see their own parameters, the variables they capture with `use`, and an arrow function everything around it; the code of a script has variables too;
+- chains of properties and calls: `$this->billing->invoices->show()`, `$this->repo->find($id)->markPaid()`, `Order::query()->first()`, following declared return types or a `@return Order` docblock (`static` and `$this` mean the class the method is called on), also through parents and interfaces.
 
 Functions resolve across files too (namespaced, imported with `use function`, or falling back to the global one).
 
-When the lookup reaches a class that is not among the analyzed files (`Carbon::now()`, a model's `User::where()` handled by Eloquent's `Model`), the call ends in an `external` node named after that class. Everything else becomes an `unresolved` node: an untyped receiver, the result of another call (`$repo->find()->save()`), a method that may come from a trait, `__call` or one of an interface's implementations, a dynamic name such as `$this->$name()`. The graph never asserts something the code does not prove.
+When the lookup reaches a class that is not among the analyzed files (`Carbon::now()`, a model's `User::where()` handled by Eloquent's `Model`), the call ends in an `external` node named after that class. Everything else becomes an `unresolved` node: an untyped receiver, the result of a call without a return type that names a class, a method that may come from a trait, `__call` or one of an interface's implementations, a dynamic name such as `$this->$name()`. The graph never asserts something the code does not prove.
 
-On the 2,500-line service from a real Laravel application, this took the share of unresolved calls from 94 % (one file alone) to 52 %, with 33 % reaching methods of the project and 15 % ending in the framework or a library.
+On the 2,500-line service from a real Laravel application, this took the share of unresolved calls from 94 % (one file alone) to 51 %, with 33 % reaching methods of the project and 16 % ending in the framework or a library. Most of the rest is what legacy code does not state: only 8 % of that application's methods declare a return type, and the most common unresolved receiver is the untyped `$query` of Eloquent callbacks (`->where(function ($query) { ... })`).
 
 **Builtins.** Calls to common pure PHP functions (`count`, `trim`, `array_merge`, `is_array`, `preg_match`...) are `builtin` steps rather than `call` steps. The UI hides them by default and rejoins the steps around them; the **Builtins (N)** button in a method flow brings them back. `header()`, `mysqli_query()` or `file_put_contents()` are not on the list, so they stay visible. The list is fixed in the code ([`QuietFunctions`](src/Analyzer/QuietFunctions.php)), not read from the running PHP, so the same code gives the same graph on every machine.
 
@@ -187,7 +187,8 @@ The project targets PHP 8.5; the Docker image has it, so nothing needs installin
 - [x] Multiple files in the analyzer and the command line, with `external` targets
 - [x] Multiple files in the web UI: project mode with a focused map and the editor following the selection
 - [x] From a call step in a flow to the flow of the method it calls, with a way back
-- [ ] Return types of methods (`$repo->find()->save()`) and local variables assigned `new Foo()`
+- [x] Return types in chains and typed local variables (`$order = $this->repo->find($id)`)
+- [ ] Parameters of callbacks typed by what they are passed to (Eloquent's `function ($query)`)
 - [x] Web UI: class map with drag, zoom, auto-layout, resizable class containers, saved layout, linked to the source code
 - [x] Web UI: method flow view
 - [x] Execution replay: step through a method, choosing branches (static, no runtime tracing)
