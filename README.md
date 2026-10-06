@@ -36,6 +36,10 @@ Classes are containers that hold their methods and can be resized; drag any bloc
 
 ![Method flow of createOrder](docs/screenshot-flow.png)
 
+`switch` and `match` branch per case; a `case` without `break` falls through to the next one:
+
+![Method flow with switch and match](docs/screenshot-flow-switch.png)
+
 **Execution replay:** below a method flow, the *Execution replay* panel walks through the method step by step. **→** takes the next step (or pick a branch when the code forks), **←** goes back, and a click on a log entry jumps to that step. The path walked so far lights up in the graph, and the current step is highlighted in the source code. It is static: no code runs, you choose the branches.
 
 ![Execution replay](docs/screenshot-replay.png)
@@ -106,6 +110,8 @@ Deliberate simplifications (the graph never claims more than it knows):
 What currently resolves: `$this->method()`, `self::method()` and `static::method()` within the same class, case-insensitively. Everything else (calls on other objects, inherited methods, `parent::`, dynamic names such as `$this->$name()`) becomes an `unresolved` node, so the graph never asserts something the code does not prove.
 
 ## Development
+
+**The showcase.** [`tests/fixtures/OrderShowcase.php`](tests/fixtures/OrderShowcase.php) is the demo class the UI opens with, and its graph is pinned by a snapshot test. Every construct the analyzer understands appears in it. When you teach the analyzer something new, add an example of it there, run `make snapshots`, review the diff, and open the method in the UI: a feature that is not visible in the demo is not finished. A test fails if the showcase stops covering a kind of branch.
 
 ```bash
 make check   # Pint (PER) + PHPStan level max + PHPUnit
