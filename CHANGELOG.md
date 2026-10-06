@@ -2,6 +2,19 @@
 
 All notable changes are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [Semantic Versioning](https://semver.org/). Until 1.0 the Code Graph format may still change between minor versions.
 
+## [Unreleased]
+
+### Added
+
+- **Several files, one project.** `bin/ariadne analyze` takes files and directories (recursively, skipping `vendor`, `node_modules` and `.git`) and resolves calls across them. A file that does not parse is reported and left out.
+- **Inheritance.** A method is looked up in the class, then its parents: `$this->m()` and `static::m()` reach an inherited method, and `parent::m()` resolves.
+- **Typed receivers.** Calls on typed and promoted properties, `@var` docblocks, legacy properties assigned a typed constructor parameter or a `new` object, typed parameters never reassigned, `(new Foo())->m()`, and chains of such properties.
+- **`external` nodes** for calls into classes outside the analyzed files (libraries, the framework), shown and hidden on the class map together with unresolved calls.
+
+### Changed
+
+- A call into a class that is not among the analyzed files is now `external` instead of `unresolved`, also when one file is analyzed alone.
+
 ## [0.1.0] - 2026-10-06
 
 First release: a static analyzer that turns PHP into a Code Graph, a web UI to explore it, and a step-by-step replay of a method.

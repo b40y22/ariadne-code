@@ -32,11 +32,13 @@ Analyzers for other languages can produce the same `Graph` without any change to
 
 ### ADR-3: Never guess, mark what is unknown
 
-A call that static analysis cannot map to a declaration becomes an `unresolved` node (calls on other objects, inherited methods, `parent::`, dynamic names). A wrong edge destroys trust in the whole graph; a missing edge is visible and can be improved later.
+A call that static analysis cannot map to a declaration becomes an `unresolved` node (an untyped receiver, the result of another call, a dynamic name). A wrong edge destroys trust in the whole graph; a missing edge is visible and can be improved later.
 
-### ADR-4: Resolve calls after traversal
+### ADR-4: Resolve calls after every file is read
 
-A method can be declared below the code that calls it. The visitor records `PendingCall`s during traversal and resolves them in `afterTraverse`, when every method of the file is known.
+A method can be declared below the code that calls it, or in another file. Analysis runs in two passes over all the files given: the first (`DeclarationCollector`) fills a `ProjectIndex` with classes, their parents, methods, functions and property types; the second (`CallGraphVisitor`) builds nodes and flows and only records `PendingCall`s. `CallResolver` resolves them last, against the whole project. One file is simply a project of one, so there is a single code path.
+
+Names are resolved by PhpParser's `NameResolver` before the graph is built, with the original names kept, and labels are printed from those (`SourcePrinter`): a reader looks for `new Clock()` in the code, not `new \App\Clock()`. Node ids of static calls use the full name, so two files importing different classes under one alias do not share a node.
 
 ### ADR-5: Library layout in the repository root
 
@@ -61,3 +63,11 @@ A real 2,500-line service showed that a fifth of all calls were `is_array`, `arr
 ### ADR-9: A flow node says what it adds, not what the source says
 
 Every call is a step, and `return`, `throw` and conditions are nodes of their own. When one expression is both (`return $this->save()`), the call is the step and the `return` is a bare keyword, because repeating the text shows the same line twice. An expression that is not a call (`throw new E()`, `return $x`) keeps its text, so the exception type and the value stay visible.
+
+### ADR-11: A receiver gets a type only when the code guarantees it
+
+Resolving `$this->repo->save()` needs the class of `$this->repo`. The analyzer takes it from what the code states: a declared type, a promoted constructor parameter, a `@var` docblock, or a typed parameter that the body never assigns. Legacy code often declares `public $repo;` and assigns it in the constructor from a typed parameter, so a property with no declared type gets one when every `$this->repo = ...` in the class agrees on a class (a typed parameter or `new Repo()`). One assignment of anything else, even in a branch that may not run, and it stays untyped. A declared type always wins, even a scalar or a union that names no single class. Return types and local `$x = new Foo()` are not used yet: they are the next most common receivers, but each needs its own rules for when the type holds.
+
+### ADR-12: Outside code is `external`, not unknown
+
+Most calls on a real application go to the framework and libraries (`Carbon::now()`, `DB::table()`, a model's `User::where()`), which are not analyzed. Leaving them `unresolved` mixed "the analyzer does not know" with "the analyzer knows, the code is elsewhere", and the first is what a reader needs to notice. When the method lookup reaches a class that is not among the analyzed files, the call ends in an `external` node named after that class, the first point where the lookup left the project, since the method may be declared there or above it. A lookup that stays inside the project and finds nothing remains `unresolved`, and so does one that passes a class using a trait or `__call`, or reaches an interface of the project, because the method could come from code the index does not follow. The UI hides `external` and `unresolved` nodes together on the class map (ADR-10).

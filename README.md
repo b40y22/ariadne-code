@@ -8,7 +8,7 @@ Static analyzer that turns PHP source into a language-agnostic **Code Graph**: t
 
 ![Ariadne Code: class map next to the source code](docs/screenshot.png)
 
-> **Status: 0.1.** Works on one PHP file at a time: classes, functions and plain scripts, the control flow of every method, and a step-by-step replay of it. Calls into other files are not followed yet, so they show as unresolved. See the [changelog](CHANGELOG.md) and the [roadmap](#roadmap).
+> **Status: 0.1, with multi-file analysis on `main`.** Classes, functions and plain scripts, the control flow of every method, and a step-by-step replay of it. The command line analyzes a whole directory and follows calls across files; the web UI still opens one file at a time. See the [changelog](CHANGELOG.md) and the [roadmap](#roadmap).
 
 ```
 PHP source → AST (nikic/php-parser) → Analyzer → Code Graph (JSON) → visualization
@@ -31,7 +31,7 @@ make up    # UI on http://localhost:5180, API on http://localhost:8090
 
 The page shows the class map next to the source code. Click a node to jump to its code; move the cursor in the editor to highlight the matching node. Use **Open .php** to analyze your own file.
 
-Calls the analyzer cannot trace to a declaration (builtins, calls on other objects) are hidden on the map by default, because there are often more of them than real nodes; the **Unresolved (N)** button shows them. A class with more than 14 methods is laid out as a grid, four across, instead of a column that would have to be shrunk until nothing can be read. Classes are containers that hold their methods and can be resized; drag any block and the layout is remembered per file.
+Calls into code outside the file (`external`) and calls the analyzer cannot trace to a declaration (`unresolved`) are hidden on the map by default, because there are often more of them than real nodes; the **External & unresolved (N)** button shows them. A class with more than 14 methods is laid out as a grid, four across, instead of a column that would have to be shrunk until nothing can be read. Classes are containers that hold their methods and can be resized; drag any block and the layout is remembered per file.
 
 **Method flow:** double-click a method (or select it and press **Show flow**) to see how it runs: its calls in execution order, `if` branches (`true`/`false`), loops, `try`/`catch`, `return` and `throw`. A flow can be shared by link, e.g. `http://localhost:5180/#method=method:App\OrderService::createOrder`.
 
@@ -47,11 +47,14 @@ Calls the analyzer cannot trace to a declaration (builtins, calls on other objec
 
 The API is a single endpoint, `POST /api/analyze` with `{"code": "...", "file": "A.php"}`, answering with the Code Graph JSON. Submitted code is only parsed, never executed or stored, and requests are limited to 1 MB.
 
-`make demo` analyzes the demo class [`tests/fixtures/OrderShowcase.php`](tests/fixtures/OrderShowcase.php) on the command line and prints its graph as JSON. To analyze your own file:
+`make demo` analyzes the demo class [`tests/fixtures/OrderShowcase.php`](tests/fixtures/OrderShowcase.php) on the command line and prints its graph as JSON. To analyze your own code, give it files or directories; everything given is one project, so calls are followed from file to file:
 
 ```bash
 docker compose run --rm php php bin/ariadne analyze path/to/YourClass.php
+docker compose run --rm php php bin/ariadne analyze path/to/project/app > graph.json
 ```
+
+Directories are read recursively for `.php` files, skipping `vendor`, `node_modules` and `.git`. A file that does not parse is reported on stderr and left out. A 590-file Laravel application takes a few seconds.
 
 ## Code Graph format
 
@@ -73,6 +76,7 @@ docker compose run --rm php php bin/ariadne analyze path/to/YourClass.php
 | `method`     | A method declared in a class                                         |
 | `function`   | A function declared outside any class                                |
 | `script`     | The code of a file that sits outside every class and function: what runs when the file is executed |
+| `external`   | A method of a class outside the analyzed files (a library, the framework): known by name, nothing to show inside |
 | `unresolved` | A call target that static analysis cannot map to a known declaration |
 | flow nodes   | `start`, `end`, `call`, `builtin`, `condition`, `loop`, `try`, `catch`, `finally`, `return`, `throw`: the control flow of one method, linked to it through `parent` |
 
@@ -109,14 +113,27 @@ Deliberate simplifications (the graph never claims more than it knows):
 - `finally` is reached on normal completion only (not after `return`/`break` inside `try`).
 - A closure or arrow function passed straight to a method or static call (`DB::transaction(fn () => ...)`) is a callback: its calls follow that call as plain steps, entered by a dotted `callback` edge. The analyzer cannot know whether the callee runs it, so the edge says "callback", not "runs". `return` and `throw` inside it never leave the method. Closures anywhere else add no steps. Callbacks nest to any depth; inside one, branching constructs are plain steps and a `throw` stays inside it.
 - A `return` or `throw` whose expression is itself a call is a bare keyword: the call is already the step just before it, and repeating its text would show the same line twice. `throw new E()` and `return $x` keep their expression, so the exception type stays visible.
-- `exit`/`die` end the flow like `return`. `include`/`require` are a step, but the included file is not followed, and neither are calls into other files.
+- `exit`/`die` end the flow like `return`. `include`/`require` are a step, but the included file is not followed.
 - Code after an unconditional `return`/`throw`/`break`/`continue` is unreachable and left out.
 
 Plain PHP scripts work too. A function is a node with its own flow, and the top-level code of a file becomes a `script` node named after the file, so a legacy page that is nothing but `require`, `if` and function calls still has a graph:
 
 ![Flow of a legacy-style script](docs/screenshot-script.png)
 
-What currently resolves: `$this->method()`, `self::method()` and `static::method()` within the same class, and calls to functions declared in the same file (also namespaced, imported with `use function`, or falling back to the global one), case-insensitively. Everything else (calls on other objects, inherited methods, `parent::`, dynamic names such as `$this->$name()`) becomes an `unresolved` node, so the graph never asserts something the code does not prove.
+### Call resolution
+
+All the analyzed files form one project: a call in one file reaches a method declared in another. A method is looked up in the class of the receiver, then in its parents, the way PHP does, case-insensitively. The receiver's class is known for:
+
+- `$this->m()`, `self::m()`, `static::m()`, `parent::m()`, `Foo::m()` and `(new Foo())->m()`;
+- `$this->repo->m()` when the property's class is guaranteed: a declared type (also on a promoted constructor parameter), a `@var Repo` docblock, or, in legacy code with neither, every `$this->repo = ...` in the class assigning a parameter typed `Repo` or a `new Repo()`;
+- `$repo->m()` when `$repo` is a parameter typed with a class and never assigned in the body; closures see their own typed parameters and the ones they capture with `use`;
+- chains of such properties: `$this->billing->invoices->show()`.
+
+Functions resolve across files too (namespaced, imported with `use function`, or falling back to the global one).
+
+When the lookup reaches a class that is not among the analyzed files (`Carbon::now()`, a model's `User::where()` handled by Eloquent's `Model`), the call ends in an `external` node named after that class. Everything else becomes an `unresolved` node: an untyped receiver, the result of another call (`$repo->find()->save()`), a method that may come from a trait, `__call` or one of an interface's implementations, a dynamic name such as `$this->$name()`. The graph never asserts something the code does not prove.
+
+On the 2,500-line service from a real Laravel application, this took the share of unresolved calls from 94 % (one file alone) to 52 %, with 33 % reaching methods of the project and 15 % ending in the framework or a library.
 
 **Builtins.** Calls to common pure PHP functions (`count`, `trim`, `array_merge`, `is_array`, `preg_match`...) are `builtin` steps rather than `call` steps. The UI hides them by default and rejoins the steps around them; the **Builtins (N)** button in a method flow brings them back. `header()`, `mysqli_query()` or `file_put_contents()` are not on the list, so they stay visible. The list is fixed in the code ([`QuietFunctions`](src/Analyzer/QuietFunctions.php)), not read from the running PHP, so the same code gives the same graph on every machine.
 
@@ -142,8 +159,10 @@ The project targets PHP 8.5; the Docker image has it, so nothing needs installin
 - [x] `switch`/`match` branches
 - [ ] `finally` after early exits
 - [ ] Interfaces, traits, enums, inheritance and dependency edges
-- [ ] Type-aware call resolution (typed properties, constructor promotion, PHPDoc)
-- [ ] Multiple files and project-level graph
+- [x] Type-aware call resolution: typed, promoted, docblock and constructor-assigned properties, typed parameters
+- [x] Multiple files in the analyzer and the command line, with `external` targets
+- [ ] Multiple files in the web UI: open a directory, code of each file next to the graph
+- [ ] Return types of methods (`$repo->find()->save()`) and local variables assigned `new Foo()`
 - [x] Web UI: class map with drag, zoom, auto-layout, resizable class containers, saved layout, linked to the source code
 - [x] Web UI: method flow view
 - [x] Execution replay: step through a method, choosing branches (static, no runtime tracing)
