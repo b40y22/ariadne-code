@@ -1,0 +1,6 @@
+services:
+  php:
+    build: .
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
+    volumes:
+      - .:/app

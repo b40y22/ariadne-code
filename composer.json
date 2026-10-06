@@ -1,0 +1,39 @@
+{
+  "name": "ariadnecode/ariadne",
+  "description": "Static analyzer that turns PHP source into a language-agnostic Code Graph.",
+  "type": "library",
+  "license": "MIT",
+  "autoload": {
+    "psr-4": {
+      "Ariadne\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Ariadne\\Tests\\": "tests/"
+    }
+  },
+  "bin": ["bin/ariadne"],
+  "scripts": {
+    "test": "phpunit",
+    "stan": "phpstan analyse --memory-limit=512M",
+    "lint": "pint --test",
+    "fix": "pint",
+    "check": ["@lint", "@stan", "@test"]
+  },
+  "config": {
+    "sort-packages": true,
+    "optimize-autoloader": true
+  },
+  "minimum-stability": "stable",
+  "prefer-stable": true,
+  "require": {
+    "php": "^8.5",
+    "nikic/php-parser": "^5.9"
+  },
+  "require-dev": {
+    "laravel/pint": "^1.32",
+    "phpstan/phpstan": "^2.3",
+    "phpunit/phpunit": "^13.4"
+  }
+}
