@@ -44,4 +44,4 @@ snapshots:
 	$(RUN) sh -c 'cd tests/fixtures && for f in *.php; do php ../../bin/ariadne analyze $$f > $${f%.php}.graph.json; done'
 
 demo:
-	$(RUN) php bin/ariadne analyze tests/fixtures/OrderService.php
+	$(RUN) php bin/ariadne analyze tests/fixtures/OrderShowcase.php
