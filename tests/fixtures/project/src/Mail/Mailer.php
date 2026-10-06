@@ -8,7 +8,10 @@ final class Mailer
 {
     public function send(?int $orderId, string $subject): void
     {
-        $this->deliver(sprintf('#%d %s', $orderId, $subject));
+        // Assigned only `new Message()`, so `$message` is known to be a Message.
+        $message = new Message(sprintf('#%d %s', $orderId, $subject));
+
+        $this->deliver($message->body());
     }
 
     private function deliver(string $text): void

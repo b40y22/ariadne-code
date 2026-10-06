@@ -30,6 +30,8 @@ final class ProjectEndpointTest extends TestCase
             'src/Http/Controller.php',
             'src/Http/OrderController.php',
             'src/Mail/Mailer.php',
+            'src/Mail/Message.php',
+            'src/Models/Order.php',
             'src/Repositories/BaseRepository.php',
             'src/Repositories/OrderRepository.php',
             'src/Services/OrderService.php',
@@ -58,6 +60,8 @@ final class ProjectEndpointTest extends TestCase
 
         self::assertContains('method:Shop\\Services\\OrderService::place -> method:Shop\\Repositories\\BaseRepository::create', $calls);
         self::assertContains('method:Shop\\Http\\OrderController::store -> method:Shop\\Http\\Controller::validate', $calls);
+        self::assertContains('method:Shop\\Services\\OrderService::pay -> method:Shop\\Models\\Order::markPaid', $calls);
+        self::assertContains('method:Shop\\Mail\\Mailer::send -> method:Shop\\Mail\\Message::body', $calls);
     }
 
     #[Test]

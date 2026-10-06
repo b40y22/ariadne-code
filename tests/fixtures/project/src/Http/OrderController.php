@@ -20,4 +20,9 @@ final class OrderController extends Controller
 
         return ['id' => $order['id']];
     }
+
+    public function pay(int $id): void
+    {
+        $this->orders->pay($id);
+    }
 }

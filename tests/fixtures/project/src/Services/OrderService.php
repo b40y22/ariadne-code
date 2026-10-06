@@ -37,6 +37,11 @@ class OrderService
         return $order;
     }
 
+    public function pay(int $id): void
+    {
+        $this->repository->find($id)->markPaid();
+    }
+
     private function total(array $items): float
     {
         $total = 0.0;
