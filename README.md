@@ -20,6 +20,16 @@ make install
 make demo
 ```
 
+### Web UI
+
+```bash
+make up    # UI on http://localhost:5180, API on http://localhost:8090
+```
+
+The page shows the class map next to the source code. Click a node to jump to its code; move the cursor in the editor to highlight the matching node. Use **Open .php** to analyze your own file.
+
+The API is a single endpoint, `POST /api/analyze` with `{"code": "...", "file": "A.php"}`, answering with the Code Graph JSON. Submitted code is only parsed, never executed or stored, and requests are limited to 1 MB.
+
 `make demo` analyzes [`tests/fixtures/OrderService.php`](tests/fixtures/OrderService.php) and prints its graph. To analyze your own file:
 
 ```bash
@@ -101,7 +111,8 @@ Requires PHP 8.5. The graph for [`OrderService.php`](tests/fixtures/OrderService
 - [ ] Interfaces, traits, enums, inheritance and dependency edges
 - [ ] Type-aware call resolution (typed properties, constructor promotion, PHPDoc)
 - [ ] Multiple files and project-level graph
-- [ ] Interactive web UI: graph with drag, zoom and auto-layout, linked to the source code
+- [x] Web UI, first cut: class map with drag, zoom, auto-layout, linked to the source code
+- [ ] Web UI: method flow view, expand/collapse, saved layout
 - [ ] Step-by-step execution replay of a method
 - [ ] AI explanations grounded in the graph
 

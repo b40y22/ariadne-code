@@ -3,7 +3,7 @@ export HOST_GID := $(shell id -g)
 
 RUN := docker compose run --rm php
 
-.PHONY: build install test stan lint fix check demo
+.PHONY: build install test stan lint fix check demo up down web-install web-check
 
 build:
 	docker compose build
@@ -24,6 +24,20 @@ fix:
 	$(RUN) vendor/bin/pint
 
 check: lint stan test
+
+up:
+	docker compose up -d api web
+	@echo "UI: http://localhost:$${WEB_PORT:-5180}   API: http://localhost:$${API_PORT:-8090}"
+
+down:
+	docker compose down
+
+web-install:
+	docker compose run --rm web npm ci
+
+web-check:
+	docker compose run --rm web npm run typecheck
+	docker compose run --rm web npm test
 
 demo:
 	$(RUN) php bin/ariadne analyze tests/fixtures/OrderService.php
