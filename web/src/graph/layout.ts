@@ -13,6 +13,14 @@ const CHROME = 78
 const GROUP_PADDING = { top: 74, left: 22, bottom: 22, right: 22 }
 const GROUP_MIN_HEIGHT = 110
 
+// A class with more methods than this is laid out as a grid instead of by its calls: a call-driven layout of
+// dozens of methods is one tall column that has to be shrunk until nothing can be read. Up to this many the calls
+// between methods are worth seeing, so the layout keeps following them.
+export const GRID_THRESHOLD = 14
+const GRID_COLUMNS = 4
+const GRID_GAP_X = 28
+const GRID_GAP_Y = 22
+
 interface Box {
   x: number
   y: number
@@ -45,10 +53,50 @@ const FLOW_OPTIONS: Record<string, string> = {
   'elk.spacing.edgeEdge': '18',
 }
 
-function widthOf(node: LayoutNode): number {
+export function widthOf(node: LayoutNode): number {
   const longest = Math.max(node.data.title.length, node.data.subtitle.length)
 
   return Math.min(MAX_NODE_WIDTH, Math.max(MIN_NODE_WIDTH, Math.round(longest * CHAR_WIDTH + CHROME)))
+}
+
+export interface Grid {
+  width: number
+  height: number
+  /** Position and size of every child, relative to the group. */
+  cells: Map<string, Box>
+}
+
+/** Children in source order, row by row, in columns as wide as their widest member. */
+export function gridOf(children: readonly LayoutNode[], minWidth: number): Grid {
+  const columns = Math.min(GRID_COLUMNS, children.length)
+  const widths = Array.from({ length: columns }, () => 0)
+
+  children.forEach((child, index) => {
+    const column = index % columns
+    widths[column] = Math.max(widths[column] ?? 0, widthOf(child))
+  })
+
+  const offsets = widths.map((_, column) => widths.slice(0, column).reduce((sum, width) => sum + width + GRID_GAP_X, 0))
+  const rows = Math.ceil(children.length / columns)
+  const cells = new Map<string, Box>()
+
+  children.forEach((child, index) => {
+    const column = index % columns
+    cells.set(child.id, {
+      x: GROUP_PADDING.left + (offsets[column] ?? 0),
+      y: GROUP_PADDING.top + Math.floor(index / columns) * (NODE_HEIGHT + GRID_GAP_Y),
+      width: widths[column] ?? MIN_NODE_WIDTH,
+      height: NODE_HEIGHT,
+    })
+  })
+
+  const inner = widths.reduce((sum, width) => sum + width, 0) + GRID_GAP_X * (columns - 1)
+
+  return {
+    width: Math.max(minWidth, GROUP_PADDING.left + inner + GROUP_PADDING.right),
+    height: GROUP_PADDING.top + rows * NODE_HEIGHT + (rows - 1) * GRID_GAP_Y + GROUP_PADDING.bottom,
+    cells,
+  }
 }
 
 function collect(node: ElkNode, into: Map<string, Box>): void {
@@ -76,7 +124,26 @@ export async function layout<T extends LayoutNode>(nodes: T[], edges: Edge[], op
     }
   }
 
+  // Big classes are placed by us, as a grid; ELK then sees them as single boxes.
+  const grids = new Map<string, Grid>()
+  const owner = new Map<string, string>()
+
+  for (const node of roots) {
+    const children = kids.get(node.id)
+
+    if (children !== undefined && children.length > GRID_THRESHOLD) {
+      grids.set(node.id, gridOf(children, widthOf(node) + GROUP_PADDING.left * 2))
+      children.forEach((child) => owner.set(child.id, node.id))
+    }
+  }
+
   const toElk = (node: T): ElkNode => {
+    const grid = grids.get(node.id)
+
+    if (grid !== undefined) {
+      return { id: node.id, width: grid.width, height: grid.height }
+    }
+
     const children = kids.get(node.id)
 
     if (children === undefined) {
@@ -109,11 +176,24 @@ export async function layout<T extends LayoutNode>(nodes: T[], edges: Edge[], op
       ...(direction === 'DOWN' ? FLOW_OPTIONS : {}),
     },
     children: roots.map(toElk),
-    edges: edges.map((edge) => ({ id: edge.id, sources: [edge.source], targets: [edge.target] })),
+    // An edge to a method inside a grid ends at its class, which is the only box ELK knows.
+    edges: edges
+      .map((edge) => ({ id: edge.id, source: owner.get(edge.source) ?? edge.source, target: owner.get(edge.target) ?? edge.target }))
+      .filter((edge) => edge.source !== edge.target)
+      .map((edge) => ({ id: edge.id, sources: [edge.source], targets: [edge.target] })),
   })
 
   const boxes = new Map<string, Box>()
   collect(result, boxes)
+
+  for (const [id, grid] of grids) {
+    grid.cells.forEach((cell, childId) => boxes.set(childId, cell))
+    const group = boxes.get(id)
+
+    if (group !== undefined) {
+      boxes.set(id, { ...group, width: grid.width, height: grid.height })
+    }
+  }
 
   return nodes.map((node) => {
     const box = boxes.get(node.id)
