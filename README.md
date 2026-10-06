@@ -30,7 +30,7 @@ make up    # UI on http://localhost:5180, API on http://localhost:8090
 
 The page shows the class map next to the source code. Click a node to jump to its code; move the cursor in the editor to highlight the matching node. Use **Open .php** to analyze your own file.
 
-Calls the analyzer cannot trace to a declaration (builtins, calls on other objects) are hidden on the map by default, because there are often more of them than real nodes; the **Unresolved (N)** button shows them. Classes are containers that hold their methods and can be resized; drag any block and the layout is remembered per file.
+Calls the analyzer cannot trace to a declaration (builtins, calls on other objects) are hidden on the map by default, because there are often more of them than real nodes; the **Unresolved (N)** button shows them. A class with more than 14 methods is laid out as a grid, four across, instead of a column that would have to be shrunk until nothing can be read. Classes are containers that hold their methods and can be resized; drag any block and the layout is remembered per file.
 
 **Method flow:** double-click a method (or select it and press **Show flow**) to see how it runs: its calls in execution order, `if` branches (`true`/`false`), loops, `try`/`catch`, `return` and `throw`. A flow can be shared by link, e.g. `http://localhost:5180/#method=method:App\\OrderService::createOrder`.
 
@@ -73,7 +73,7 @@ docker compose run --rm php php bin/ariadne analyze path/to/YourClass.php
 | `function`   | A function declared outside any class                                |
 | `script`     | The code of a file that sits outside every class and function: what runs when the file is executed |
 | `unresolved` | A call target that static analysis cannot map to a known declaration |
-| flow nodes   | `start`, `end`, `call`, `condition`, `loop`, `try`, `catch`, `finally`, `return`, `throw`: the control flow of one method, linked to it through `parent` |
+| flow nodes   | `start`, `end`, `call`, `builtin`, `condition`, `loop`, `try`, `catch`, `finally`, `return`, `throw`: the control flow of one method, linked to it through `parent` |
 
 | Edge type  | Meaning                                                                  |
 |------------|--------------------------------------------------------------------------|
@@ -106,7 +106,7 @@ Deliberate simplifications (the graph never claims more than it knows):
 - `do ... while` is drawn like `while`, with the condition node before the body.
 - Exceptions raised by called methods are unknown, so a `try` links to each of its `catch` blocks.
 - `finally` is reached on normal completion only (not after `return`/`break` inside `try`).
-- A closure or arrow function passed straight to a method or static call (`DB::transaction(fn () => ...)`) is a callback: its calls follow that call as plain steps, entered by a dotted `callback` edge. The analyzer cannot know whether the callee runs it, so the edge says "callback", not "runs". `return` and `throw` inside it never leave the method. Closures anywhere else add no steps.
+- A closure or arrow function passed straight to a method or static call (`DB::transaction(fn () => ...)`) is a callback: its calls follow that call as plain steps, entered by a dotted `callback` edge. The analyzer cannot know whether the callee runs it, so the edge says "callback", not "runs". `return` and `throw` inside it never leave the method. Closures anywhere else add no steps. Callbacks nest to any depth; inside one, branching constructs are plain steps and a `throw` stays inside it.
 - A `return` or `throw` whose expression is itself a call is a bare keyword: the call is already the step just before it, and repeating its text would show the same line twice. `throw new E()` and `return $x` keep their expression, so the exception type stays visible.
 - `exit`/`die` end the flow like `return`. `include`/`require` are a step, but the included file is not followed, and neither are calls into other files.
 - Code after an unconditional `return`/`throw`/`break`/`continue` is unreachable and left out.
@@ -116,6 +116,8 @@ Plain PHP scripts work too. A function is a node with its own flow, and the top-
 ![Flow of a legacy-style script](docs/screenshot-script.png)
 
 What currently resolves: `$this->method()`, `self::method()` and `static::method()` within the same class, and calls to functions declared in the same file (also namespaced, imported with `use function`, or falling back to the global one), case-insensitively. Everything else (calls on other objects, inherited methods, `parent::`, dynamic names such as `$this->$name()`) becomes an `unresolved` node, so the graph never asserts something the code does not prove.
+
+**Builtins.** Calls to common pure PHP functions (`count`, `trim`, `array_merge`, `is_array`, `preg_match`...) are `builtin` steps rather than `call` steps. The UI hides them by default and rejoins the steps around them; the **Builtins (N)** button in a method flow brings them back. `header()`, `mysqli_query()` or `file_put_contents()` are not on the list, so they stay visible. The list is fixed in the code ([`QuietFunctions`](src/Analyzer/QuietFunctions.php)), not read from the running PHP, so the same code gives the same graph on every machine.
 
 ## Development
 

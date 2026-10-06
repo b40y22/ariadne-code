@@ -54,6 +54,10 @@ Legacy PHP is often procedural, so a graph of classes alone would be empty for t
 
 `tests/fixtures/OrderShowcase.php` is the class the UI opens with, a snapshot fixture, and the list of constructs the analyzer understands. One file serves all three because separate copies drift apart within a week. A feature that is not in it is not visible, so it is not finished, and a test fails when the showcase stops covering a kind of node or branch. See "Development" in the README.
 
+### ADR-10: Noise is marked by the analyzer and hidden by the UI
+
+A real 2,500-line service showed that a fifth of all calls were `is_array`, `array_merge` and similar helpers. They are facts about the code, so the analyzer keeps them, as `builtin` steps from a fixed list; whether to show them is a question for the reader, so the UI decides, and rejoins the steps around a hidden one so the path stays a path. The same split applies to unresolved calls on the class map. A list read from the running PHP would have been shorter to write and would have changed the graph between machines, which would have broken the snapshots.
+
 ### ADR-9: A flow node says what it adds, not what the source says
 
 Every call is a step, and `return`, `throw` and conditions are nodes of their own. When one expression is both (`return $this->save()`), the call is the step and the `return` is a bare keyword, because repeating the text shows the same line twice. An expression that is not a call (`throw new E()`, `return $x`) keeps its text, so the exception type and the value stay visible.
