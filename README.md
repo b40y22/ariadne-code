@@ -77,7 +77,7 @@ docker compose run --rm php php bin/ariadne analyze path/to/YourClass.php
 
 ### Method flow
 
-Every method with a body also gets its control flow: calls in execution order, joined by `flow` edges. Branch edges carry a `label`: `true`/`false` (conditions), `body`/`next`/`exit`/`continue` (loops), `exception`/`throw` (try/catch), `set`/`null` (`??`, `??=`).
+Every method with a body also gets its control flow: calls in execution order, joined by `flow` edges. Branch edges carry a `label`: `true`/`false` (conditions), `body`/`next`/`exit`/`continue` (loops), `exception`/`throw` (try/catch), `set`/`null` (`??`, `??=`), `callback`.
 
 Analyzing [`ShippingService`](tests/fixtures/ShippingService.php) gives, for `ship()`, among others:
 
@@ -100,7 +100,7 @@ Deliberate simplifications (the graph never claims more than it knows):
 - `do ... while` is drawn like `while`, with the condition node before the body.
 - Exceptions raised by called methods are unknown, so a `try` links to each of its `catch` blocks.
 - `finally` is reached on normal completion only (not after `return`/`break` inside `try`).
-- Closures and arrow functions add no steps to the enclosing flow, even when they are passed to something that runs them at once (`DB::transaction(fn () => ...)`).
+- A closure or arrow function passed straight to a method or static call (`DB::transaction(fn () => ...)`) is a callback: its calls follow that call as plain steps, entered by a dotted `callback` edge. The analyzer cannot know whether the callee runs it, so the edge says "callback", not "runs". `return` and `throw` inside it never leave the method. Closures anywhere else add no steps.
 - Code after an unconditional `return`/`throw`/`break`/`continue` is unreachable and left out.
 
 What currently resolves: `$this->method()`, `self::method()` and `static::method()` within the same class, case-insensitively. Everything else (calls on other objects, inherited methods, `parent::`, dynamic names such as `$this->$name()`) becomes an `unresolved` node, so the graph never asserts something the code does not prove.

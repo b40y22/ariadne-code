@@ -13,6 +13,7 @@ defineProps<{ mode: 'map' | 'flow' }>()
     <li><span class="swatch call" />true / body</li>
     <li><span class="swatch plain" />next step</li>
     <li><span class="swatch back" />loop back</li>
+    <li><span class="swatch callback" />callback</li>
     <li><span class="swatch danger" />exception</li>
   </ul>
 </template>
@@ -58,6 +59,10 @@ defineProps<{ mode: 'map' | 'flow' }>()
 
 .swatch.back {
   border-top: 2px dashed var(--dim);
+}
+
+.swatch.callback {
+  border-top: 2px dotted var(--muted);
 }
 
 .swatch.danger {

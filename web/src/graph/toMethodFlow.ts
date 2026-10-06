@@ -35,6 +35,9 @@ const LOOP_OFFSET = 56
 const EXCEPTIONAL = new Set(['exception', 'throw'])
 /** Labels that return to an earlier node: drawn dashed so loops read as loops. */
 const BACKWARD = new Set(['next', 'continue'])
+/** The edge from a call into the body of a callback passed to it. */
+const CALLBACK = 'callback'
+
 /** Labels that carry the main path of a branch. */
 const PRIMARY = new Set(['true', 'body', 'set'])
 
@@ -51,7 +54,15 @@ export function flowEdgeClass(label: string | null): string {
     return 'flow-edge flow-edge-plain'
   }
 
-  const kind = EXCEPTIONAL.has(label) ? 'exceptional' : BACKWARD.has(label) ? 'backward' : PRIMARY.has(label) ? 'primary' : 'secondary'
+  const kind = EXCEPTIONAL.has(label)
+    ? 'exceptional'
+    : BACKWARD.has(label)
+      ? 'backward'
+      : label === CALLBACK
+        ? 'callback'
+        : PRIMARY.has(label)
+          ? 'primary'
+          : 'secondary'
 
   return `flow-edge flow-edge-${kind}`
 }

@@ -125,6 +125,7 @@ describe('flowEdgeClass', () => {
     ['exit', 'flow-edge-secondary'],
     ['next', 'flow-edge-backward'],
     ['continue', 'flow-edge-backward'],
+    ['callback', 'flow-edge-callback'],
     ['exception', 'flow-edge-exceptional'],
     ['throw', 'flow-edge-exceptional'],
   ])('maps %s to %s', (label, expected) => {

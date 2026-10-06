@@ -316,6 +316,10 @@ watch(
   color: var(--accent);
 }
 
+.chip-callback {
+  border-style: dotted;
+}
+
 .chip-exception,
 .chip-throw {
   border-color: rgba(255, 92, 92, 0.6);

@@ -203,6 +203,12 @@ defineExpose({ resetLayout })
   stroke-dasharray: 5 5;
 }
 
+.flow-edge-callback .vue-flow__edge-path {
+  stroke: var(--muted);
+  stroke-dasharray: 2 5;
+  stroke-linecap: round;
+}
+
 .flow-edge-exceptional .vue-flow__edge-path {
   stroke: var(--danger);
   stroke-dasharray: 5 5;
