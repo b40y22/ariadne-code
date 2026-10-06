@@ -93,7 +93,7 @@
         {
             "id": "flow:method:Fixtures\\OrderService::createOrder#6",
             "type": "return",
-            "name": "return $this->orders->save($data, $total)",
+            "name": "return",
             "file": "OrderService.php",
             "lineStart": 17,
             "lineEnd": 17,
@@ -192,7 +192,7 @@
         {
             "id": "flow:method:Fixtures\\OrderService::calculateTotal#4",
             "type": "return",
-            "name": "return self::roundMoney(array_sum($data))",
+            "name": "return",
             "file": "OrderService.php",
             "lineStart": 29,
             "lineEnd": 29,
@@ -237,7 +237,7 @@
         {
             "id": "flow:method:Fixtures\\OrderService::roundMoney#3",
             "type": "return",
-            "name": "return round($value, 2)",
+            "name": "return",
             "file": "OrderService.php",
             "lineStart": 34,
             "lineEnd": 34,

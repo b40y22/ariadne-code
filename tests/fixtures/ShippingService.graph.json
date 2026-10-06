@@ -138,7 +138,7 @@
         {
             "id": "flow:method:Fixtures\\ShippingService::ship#14",
             "type": "return",
-            "name": "return $this->dispatch()",
+            "name": "return",
             "file": "ShippingService.php",
             "lineStart": 30,
             "lineEnd": 30,

@@ -68,11 +68,22 @@ final class OrderService extends BaseService
         };
     }
 
+    /** `throw new ...` shows its expression; `throw Factory::make()` is the call step, then a bare `throw`. */
     private function validate(array $data): void
     {
         if ($data === []) {
             throw new \InvalidArgumentException('Empty order');
         }
+
+        if (!$this->isKnownCustomer($data)) {
+            throw OrderException::unknownCustomer($data['customer']);
+        }
+    }
+
+    /** A call on a fresh object keeps its parentheses; a returned call is the step, then a bare `return`. */
+    private function stamp(): string
+    {
+        return (new Clock())->now()->format('c');
     }
 
     private function inStock(array $item): bool

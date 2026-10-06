@@ -5,8 +5,8 @@
             "type": "script",
             "name": "OrderShowcase.php",
             "file": "OrderShowcase.php",
-            "lineStart": 101,
-            "lineEnd": 110,
+            "lineStart": 112,
+            "lineEnd": 121,
             "parent": null
         },
         {
@@ -14,8 +14,8 @@
             "type": "start",
             "name": "start",
             "file": "OrderShowcase.php",
-            "lineStart": 101,
-            "lineEnd": 110,
+            "lineStart": 112,
+            "lineEnd": 121,
             "parent": "script:OrderShowcase.php"
         },
         {
@@ -23,8 +23,8 @@
             "type": "call",
             "name": "require_once __DIR__ . '/bootstrap.php'",
             "file": "OrderShowcase.php",
-            "lineStart": 101,
-            "lineEnd": 101,
+            "lineStart": 112,
+            "lineEnd": 112,
             "parent": "script:OrderShowcase.php"
         },
         {
@@ -32,8 +32,8 @@
             "type": "condition",
             "name": "!isset($_POST['items'])",
             "file": "OrderShowcase.php",
-            "lineStart": 103,
-            "lineEnd": 103,
+            "lineStart": 114,
+            "lineEnd": 114,
             "parent": "script:OrderShowcase.php"
         },
         {
@@ -41,8 +41,8 @@
             "type": "call",
             "name": "http_response_code",
             "file": "OrderShowcase.php",
-            "lineStart": 104,
-            "lineEnd": 104,
+            "lineStart": 115,
+            "lineEnd": 115,
             "parent": "script:OrderShowcase.php"
         },
         {
@@ -50,17 +50,17 @@
             "type": "return",
             "name": "die('No items')",
             "file": "OrderShowcase.php",
-            "lineStart": 105,
-            "lineEnd": 105,
+            "lineStart": 116,
+            "lineEnd": 116,
             "parent": "script:OrderShowcase.php"
         },
         {
             "id": "flow:script:OrderShowcase.php#6",
             "type": "call",
-            "name": "new OrderService(new OrderRepository())->createOrder",
+            "name": "(new OrderService(new OrderRepository()))->createOrder",
             "file": "OrderShowcase.php",
-            "lineStart": 108,
-            "lineEnd": 108,
+            "lineStart": 119,
+            "lineEnd": 119,
             "parent": "script:OrderShowcase.php"
         },
         {
@@ -68,8 +68,8 @@
             "type": "call",
             "name": "format_money",
             "file": "OrderShowcase.php",
-            "lineStart": 110,
-            "lineEnd": 110,
+            "lineStart": 121,
+            "lineEnd": 121,
             "parent": "script:OrderShowcase.php"
         },
         {
@@ -77,8 +77,8 @@
             "type": "end",
             "name": "end",
             "file": "OrderShowcase.php",
-            "lineStart": 101,
-            "lineEnd": 110,
+            "lineStart": 112,
+            "lineEnd": 121,
             "parent": "script:OrderShowcase.php"
         },
         {
@@ -87,7 +87,7 @@
             "name": "App\\OrderService",
             "file": "OrderShowcase.php",
             "lineStart": 13,
-            "lineEnd": 92,
+            "lineEnd": 103,
             "parent": null
         },
         {
@@ -246,7 +246,7 @@
         {
             "id": "flow:method:App\\OrderService::createOrder#14",
             "type": "return",
-            "name": "return DB::transaction(fn() => $this->orders->save($data, self::ro…",
+            "name": "return",
             "file": "OrderShowcase.php",
             "lineStart": 36,
             "lineEnd": 36,
@@ -491,8 +491,8 @@
             "type": "method",
             "name": "validate",
             "file": "OrderShowcase.php",
-            "lineStart": 71,
-            "lineEnd": 76,
+            "lineStart": 72,
+            "lineEnd": 81,
             "parent": null
         },
         {
@@ -500,8 +500,8 @@
             "type": "start",
             "name": "start",
             "file": "OrderShowcase.php",
-            "lineStart": 71,
-            "lineEnd": 76,
+            "lineStart": 72,
+            "lineEnd": 81,
             "parent": "method:App\\OrderService::validate"
         },
         {
@@ -509,8 +509,8 @@
             "type": "condition",
             "name": "$data === []",
             "file": "OrderShowcase.php",
-            "lineStart": 73,
-            "lineEnd": 73,
+            "lineStart": 74,
+            "lineEnd": 74,
             "parent": "method:App\\OrderService::validate"
         },
         {
@@ -518,26 +518,116 @@
             "type": "throw",
             "name": "throw new \\InvalidArgumentException('Empty order')",
             "file": "OrderShowcase.php",
-            "lineStart": 74,
-            "lineEnd": 74,
+            "lineStart": 75,
+            "lineEnd": 75,
             "parent": "method:App\\OrderService::validate"
         },
         {
             "id": "flow:method:App\\OrderService::validate#4",
+            "type": "call",
+            "name": "$this->isKnownCustomer",
+            "file": "OrderShowcase.php",
+            "lineStart": 78,
+            "lineEnd": 78,
+            "parent": "method:App\\OrderService::validate"
+        },
+        {
+            "id": "flow:method:App\\OrderService::validate#5",
+            "type": "condition",
+            "name": "!$this->isKnownCustomer($data)",
+            "file": "OrderShowcase.php",
+            "lineStart": 78,
+            "lineEnd": 78,
+            "parent": "method:App\\OrderService::validate"
+        },
+        {
+            "id": "flow:method:App\\OrderService::validate#6",
+            "type": "call",
+            "name": "OrderException::unknownCustomer",
+            "file": "OrderShowcase.php",
+            "lineStart": 79,
+            "lineEnd": 79,
+            "parent": "method:App\\OrderService::validate"
+        },
+        {
+            "id": "flow:method:App\\OrderService::validate#7",
+            "type": "throw",
+            "name": "throw",
+            "file": "OrderShowcase.php",
+            "lineStart": 79,
+            "lineEnd": 79,
+            "parent": "method:App\\OrderService::validate"
+        },
+        {
+            "id": "flow:method:App\\OrderService::validate#8",
             "type": "end",
             "name": "end",
             "file": "OrderShowcase.php",
-            "lineStart": 71,
-            "lineEnd": 76,
+            "lineStart": 72,
+            "lineEnd": 81,
             "parent": "method:App\\OrderService::validate"
+        },
+        {
+            "id": "method:App\\OrderService::stamp",
+            "type": "method",
+            "name": "stamp",
+            "file": "OrderShowcase.php",
+            "lineStart": 84,
+            "lineEnd": 87,
+            "parent": null
+        },
+        {
+            "id": "flow:method:App\\OrderService::stamp#1",
+            "type": "start",
+            "name": "start",
+            "file": "OrderShowcase.php",
+            "lineStart": 84,
+            "lineEnd": 87,
+            "parent": "method:App\\OrderService::stamp"
+        },
+        {
+            "id": "flow:method:App\\OrderService::stamp#2",
+            "type": "call",
+            "name": "(new Clock())->now",
+            "file": "OrderShowcase.php",
+            "lineStart": 86,
+            "lineEnd": 86,
+            "parent": "method:App\\OrderService::stamp"
+        },
+        {
+            "id": "flow:method:App\\OrderService::stamp#3",
+            "type": "call",
+            "name": "(new Clock())->now()->format",
+            "file": "OrderShowcase.php",
+            "lineStart": 86,
+            "lineEnd": 86,
+            "parent": "method:App\\OrderService::stamp"
+        },
+        {
+            "id": "flow:method:App\\OrderService::stamp#4",
+            "type": "return",
+            "name": "return",
+            "file": "OrderShowcase.php",
+            "lineStart": 86,
+            "lineEnd": 86,
+            "parent": "method:App\\OrderService::stamp"
+        },
+        {
+            "id": "flow:method:App\\OrderService::stamp#5",
+            "type": "end",
+            "name": "end",
+            "file": "OrderShowcase.php",
+            "lineStart": 84,
+            "lineEnd": 87,
+            "parent": "method:App\\OrderService::stamp"
         },
         {
             "id": "method:App\\OrderService::inStock",
             "type": "method",
             "name": "inStock",
             "file": "OrderShowcase.php",
-            "lineStart": 78,
-            "lineEnd": 81,
+            "lineStart": 89,
+            "lineEnd": 92,
             "parent": null
         },
         {
@@ -545,8 +635,8 @@
             "type": "start",
             "name": "start",
             "file": "OrderShowcase.php",
-            "lineStart": 78,
-            "lineEnd": 81,
+            "lineStart": 89,
+            "lineEnd": 92,
             "parent": "method:App\\OrderService::inStock"
         },
         {
@@ -554,8 +644,8 @@
             "type": "return",
             "name": "return $item['qty'] > 0",
             "file": "OrderShowcase.php",
-            "lineStart": 80,
-            "lineEnd": 80,
+            "lineStart": 91,
+            "lineEnd": 91,
             "parent": "method:App\\OrderService::inStock"
         },
         {
@@ -563,8 +653,8 @@
             "type": "end",
             "name": "end",
             "file": "OrderShowcase.php",
-            "lineStart": 78,
-            "lineEnd": 81,
+            "lineStart": 89,
+            "lineEnd": 92,
             "parent": "method:App\\OrderService::inStock"
         },
         {
@@ -572,8 +662,8 @@
             "type": "method",
             "name": "price",
             "file": "OrderShowcase.php",
-            "lineStart": 83,
-            "lineEnd": 86,
+            "lineStart": 94,
+            "lineEnd": 97,
             "parent": null
         },
         {
@@ -581,8 +671,8 @@
             "type": "start",
             "name": "start",
             "file": "OrderShowcase.php",
-            "lineStart": 83,
-            "lineEnd": 86,
+            "lineStart": 94,
+            "lineEnd": 97,
             "parent": "method:App\\OrderService::price"
         },
         {
@@ -590,8 +680,8 @@
             "type": "return",
             "name": "return $item['qty'] * $item['price']",
             "file": "OrderShowcase.php",
-            "lineStart": 85,
-            "lineEnd": 85,
+            "lineStart": 96,
+            "lineEnd": 96,
             "parent": "method:App\\OrderService::price"
         },
         {
@@ -599,8 +689,8 @@
             "type": "end",
             "name": "end",
             "file": "OrderShowcase.php",
-            "lineStart": 83,
-            "lineEnd": 86,
+            "lineStart": 94,
+            "lineEnd": 97,
             "parent": "method:App\\OrderService::price"
         },
         {
@@ -608,8 +698,8 @@
             "type": "method",
             "name": "roundMoney",
             "file": "OrderShowcase.php",
-            "lineStart": 88,
-            "lineEnd": 91,
+            "lineStart": 99,
+            "lineEnd": 102,
             "parent": null
         },
         {
@@ -617,8 +707,8 @@
             "type": "start",
             "name": "start",
             "file": "OrderShowcase.php",
-            "lineStart": 88,
-            "lineEnd": 91,
+            "lineStart": 99,
+            "lineEnd": 102,
             "parent": "method:App\\OrderService::roundMoney"
         },
         {
@@ -626,17 +716,17 @@
             "type": "call",
             "name": "round",
             "file": "OrderShowcase.php",
-            "lineStart": 90,
-            "lineEnd": 90,
+            "lineStart": 101,
+            "lineEnd": 101,
             "parent": "method:App\\OrderService::roundMoney"
         },
         {
             "id": "flow:method:App\\OrderService::roundMoney#3",
             "type": "return",
-            "name": "return round($value, 2)",
+            "name": "return",
             "file": "OrderShowcase.php",
-            "lineStart": 90,
-            "lineEnd": 90,
+            "lineStart": 101,
+            "lineEnd": 101,
             "parent": "method:App\\OrderService::roundMoney"
         },
         {
@@ -644,8 +734,8 @@
             "type": "end",
             "name": "end",
             "file": "OrderShowcase.php",
-            "lineStart": 88,
-            "lineEnd": 91,
+            "lineStart": 99,
+            "lineEnd": 102,
             "parent": "method:App\\OrderService::roundMoney"
         },
         {
@@ -653,8 +743,8 @@
             "type": "function",
             "name": "App\\format_money",
             "file": "OrderShowcase.php",
-            "lineStart": 95,
-            "lineEnd": 98,
+            "lineStart": 106,
+            "lineEnd": 109,
             "parent": null
         },
         {
@@ -662,8 +752,8 @@
             "type": "start",
             "name": "start",
             "file": "OrderShowcase.php",
-            "lineStart": 95,
-            "lineEnd": 98,
+            "lineStart": 106,
+            "lineEnd": 109,
             "parent": "function:App\\format_money"
         },
         {
@@ -671,8 +761,8 @@
             "type": "call",
             "name": "number_format",
             "file": "OrderShowcase.php",
-            "lineStart": 97,
-            "lineEnd": 97,
+            "lineStart": 108,
+            "lineEnd": 108,
             "parent": "function:App\\format_money"
         },
         {
@@ -680,8 +770,8 @@
             "type": "return",
             "name": "return number_format($amount, 2) . ' UAH'",
             "file": "OrderShowcase.php",
-            "lineStart": 97,
-            "lineEnd": 97,
+            "lineStart": 108,
+            "lineEnd": 108,
             "parent": "function:App\\format_money"
         },
         {
@@ -689,8 +779,8 @@
             "type": "end",
             "name": "end",
             "file": "OrderShowcase.php",
-            "lineStart": 95,
-            "lineEnd": 98,
+            "lineStart": 106,
+            "lineEnd": 109,
             "parent": "function:App\\format_money"
         },
         {
@@ -811,6 +901,42 @@
             "parent": null
         },
         {
+            "id": "unresolved:$this->isKnownCustomer",
+            "type": "unresolved",
+            "name": "$this->isKnownCustomer",
+            "file": null,
+            "lineStart": null,
+            "lineEnd": null,
+            "parent": null
+        },
+        {
+            "id": "unresolved:App\\OrderException::unknownCustomer",
+            "type": "unresolved",
+            "name": "App\\OrderException::unknownCustomer",
+            "file": null,
+            "lineStart": null,
+            "lineEnd": null,
+            "parent": null
+        },
+        {
+            "id": "unresolved:(new Clock())->now()->format",
+            "type": "unresolved",
+            "name": "(new Clock())->now()->format",
+            "file": null,
+            "lineStart": null,
+            "lineEnd": null,
+            "parent": null
+        },
+        {
+            "id": "unresolved:(new Clock())->now",
+            "type": "unresolved",
+            "name": "(new Clock())->now",
+            "file": null,
+            "lineStart": null,
+            "lineEnd": null,
+            "parent": null
+        },
+        {
             "id": "unresolved:round",
             "type": "unresolved",
             "name": "round",
@@ -838,9 +964,9 @@
             "parent": null
         },
         {
-            "id": "unresolved:new OrderService(new OrderRepository())->createOrder",
+            "id": "unresolved:(new OrderService(new OrderRepository()))->createOrder",
             "type": "unresolved",
-            "name": "new OrderService(new OrderRepository())->createOrder",
+            "name": "(new OrderService(new OrderRepository()))->createOrder",
             "file": null,
             "lineStart": null,
             "lineEnd": null,
@@ -1297,8 +1423,78 @@
             "label": "false"
         },
         {
+            "from": "flow:method:App\\OrderService::validate#4",
+            "to": "flow:method:App\\OrderService::validate#5",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::validate#5",
+            "to": "flow:method:App\\OrderService::validate#6",
+            "type": "flow",
+            "line": null,
+            "label": "true"
+        },
+        {
+            "from": "flow:method:App\\OrderService::validate#6",
+            "to": "flow:method:App\\OrderService::validate#7",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::validate#5",
+            "to": "flow:method:App\\OrderService::validate#8",
+            "type": "flow",
+            "line": null,
+            "label": "false"
+        },
+        {
             "from": "flow:method:App\\OrderService::validate#3",
-            "to": "flow:method:App\\OrderService::validate#4",
+            "to": "flow:method:App\\OrderService::validate#8",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::validate#7",
+            "to": "flow:method:App\\OrderService::validate#8",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "class:App\\OrderService",
+            "to": "method:App\\OrderService::stamp",
+            "type": "contains",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::stamp#1",
+            "to": "flow:method:App\\OrderService::stamp#2",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::stamp#2",
+            "to": "flow:method:App\\OrderService::stamp#3",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::stamp#3",
+            "to": "flow:method:App\\OrderService::stamp#4",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::stamp#4",
+            "to": "flow:method:App\\OrderService::stamp#5",
             "type": "flow",
             "line": null,
             "label": null
@@ -1514,38 +1710,66 @@
             "label": null
         },
         {
+            "from": "method:App\\OrderService::validate",
+            "to": "unresolved:$this->isKnownCustomer",
+            "type": "calls",
+            "line": 78,
+            "label": null
+        },
+        {
+            "from": "method:App\\OrderService::validate",
+            "to": "unresolved:App\\OrderException::unknownCustomer",
+            "type": "calls",
+            "line": 79,
+            "label": null
+        },
+        {
+            "from": "method:App\\OrderService::stamp",
+            "to": "unresolved:(new Clock())->now()->format",
+            "type": "calls",
+            "line": 86,
+            "label": null
+        },
+        {
+            "from": "method:App\\OrderService::stamp",
+            "to": "unresolved:(new Clock())->now",
+            "type": "calls",
+            "line": 86,
+            "label": null
+        },
+        {
             "from": "method:App\\OrderService::roundMoney",
             "to": "unresolved:round",
             "type": "calls",
-            "line": 90,
+            "line": 101,
             "label": null
         },
         {
             "from": "function:App\\format_money",
             "to": "unresolved:number_format",
             "type": "calls",
-            "line": 97,
+            "line": 108,
             "label": null
         },
         {
             "from": "script:OrderShowcase.php",
             "to": "unresolved:http_response_code",
             "type": "calls",
-            "line": 104,
+            "line": 115,
             "label": null
         },
         {
             "from": "script:OrderShowcase.php",
-            "to": "unresolved:new OrderService(new OrderRepository())->createOrder",
+            "to": "unresolved:(new OrderService(new OrderRepository()))->createOrder",
             "type": "calls",
-            "line": 108,
+            "line": 119,
             "label": null
         },
         {
             "from": "script:OrderShowcase.php",
             "to": "function:App\\format_money",
             "type": "calls",
-            "line": 110,
+            "line": 121,
             "label": null
         }
     ]

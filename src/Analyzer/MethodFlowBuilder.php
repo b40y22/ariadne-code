@@ -263,7 +263,7 @@ final class MethodFlowBuilder
     private function return(Return_ $stmt, array $in): array
     {
         $in = $this->evaluate($stmt, $in);
-        $node = $this->add(NodeType::Return_, $stmt->expr === null ? 'return' : 'return ' . $this->text($stmt->expr), $stmt);
+        $node = $this->add(NodeType::Return_, $this->keyword('return', $stmt->expr), $stmt);
         $this->connect($in, $node);
         $this->toEnd[] = new FlowExit($node);
 
@@ -278,7 +278,7 @@ final class MethodFlowBuilder
     private function throw(Throw_ $expr, array $in): array
     {
         $in = $this->evaluate($expr->expr, $in);
-        $node = $this->add(NodeType::Throw_, 'throw ' . $this->text($expr->expr), $expr);
+        $node = $this->add(NodeType::Throw_, $this->keyword('throw', $expr->expr), $expr);
         $this->connect($in, $node);
 
         if ($this->tries === []) {
@@ -636,6 +636,19 @@ final class MethodFlowBuilder
         foreach ($from as $exit) {
             $this->graph->addEdge(new Edge($exit->from, $to, EdgeType::Flow, label: $exit->label ?? $default));
         }
+    }
+
+    /**
+     * The label of a `return` or `throw`. When the expression is itself a call, the call is already the step
+     * just before, and repeating it would only show the same line twice, so the keyword stands alone.
+     */
+    private function keyword(string $keyword, ?Expr $expr): string
+    {
+        if ($expr === null || $this->reader->read($expr) !== null) {
+            return $keyword;
+        }
+
+        return $keyword . ' ' . $this->text($expr);
     }
 
     /** A branch label has to fit on an edge. */

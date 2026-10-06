@@ -6,10 +6,17 @@ namespace Ariadne\Analyzer;
 
 use PhpParser\Node as AstNode;
 use PhpParser\Node\Expr;
+use PhpParser\Node\Expr\Assign;
+use PhpParser\Node\Expr\AssignOp;
+use PhpParser\Node\Expr\BinaryOp;
+use PhpParser\Node\Expr\Cast;
+use PhpParser\Node\Expr\Clone_;
 use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;
+use PhpParser\Node\Expr\New_;
 use PhpParser\Node\Expr\NullsafeMethodCall;
 use PhpParser\Node\Expr\StaticCall;
+use PhpParser\Node\Expr\Ternary;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
@@ -35,7 +42,7 @@ final readonly class CallSiteReader
                 && $node->var instanceof Variable
                 && $node->var->name === 'this';
             $operator = $node instanceof NullsafeMethodCall ? '?->' : '->';
-            $label = $this->printer->prettyPrintExpr($node->var) . $operator . $this->printName($node->name);
+            $label = $this->receiver($node->var) . $operator . $this->printName($node->name);
         } elseif ($node instanceof StaticCall) {
             $isLocal = $node->class instanceof Name
                 && in_array($node->class->toLowerString(), ['self', 'static'], true);
@@ -79,6 +86,24 @@ final readonly class CallSiteReader
         $names[] = $name->toString();
 
         return array_values(array_unique(array_map(strtolower(...), $names)));
+    }
+
+    /**
+     * The object a method is called on. Some expressions need parentheses to stay readable and valid:
+     * `(new Clock())->now()` must not become `new Clock()->now()`, which older PHP does not accept.
+     */
+    private function receiver(Expr $var): string
+    {
+        $text = $this->printer->prettyPrintExpr($var);
+        $needsParentheses = $var instanceof New_
+            || $var instanceof Clone_
+            || $var instanceof Ternary
+            || $var instanceof BinaryOp
+            || $var instanceof Assign
+            || $var instanceof AssignOp
+            || $var instanceof Cast;
+
+        return $needsParentheses ? '(' . $text . ')' : $text;
     }
 
     private function printName(Identifier|Expr $name): string

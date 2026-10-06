@@ -172,8 +172,8 @@ final class MethodFlowTest extends TestCase
 
         self::assertSame([
             'start -> call $this->b',
-            'call $this->b -> return return $this->b()',
-            'return return $this->b() -> end',
+            'call $this->b -> return return',
+            'return return -> end',
         ], $flow);
     }
 
@@ -490,8 +490,8 @@ final class MethodFlowTest extends TestCase
         self::assertSame([
             'start -> call DB::transaction',
             'call DB::transaction -> call $this->book [callback]',
-            'call $this->book -> return return DB::transaction(fn() => $this->book())',
-            'return return DB::transaction(fn() => $this->book()) -> end',
+            'call $this->book -> return return',
+            'return return -> end',
         ], $flow);
     }
 
@@ -685,6 +685,74 @@ final class MethodFlowTest extends TestCase
         }
 
         self::assertMatchesRegularExpression('/\[case "v+…\]$/u', $label);
+    }
+
+    #[Test]
+    public function a_return_of_a_call_is_a_bare_keyword_because_the_call_is_the_step_before(): void
+    {
+        $flow = $this->flow('function a() { return $this->b(); }');
+
+        self::assertSame(['start -> call $this->b', 'call $this->b -> return return', 'return return -> end'], $flow);
+    }
+
+    #[Test]
+    public function a_throw_of_a_factory_call_is_a_bare_keyword(): void
+    {
+        $flow = $this->flow('function a() { throw Failure::because($this->reason()); }');
+
+        self::assertSame([
+            'start -> call $this->reason',
+            'call $this->reason -> call Failure::because',
+            'call Failure::because -> throw throw',
+            'throw throw -> end',
+        ], $flow);
+    }
+
+    #[Test]
+    public function a_throw_of_a_new_exception_keeps_its_expression_so_the_type_stays_visible(): void
+    {
+        $flow = $this->flow('function a() { throw new \InvalidArgumentException("empty"); }');
+
+        // The printer keeps the quote style of the source.
+        self::assertSame(['start -> throw throw new \InvalidArgumentException("empty")', 'throw throw new \InvalidArgumentException("empty") -> end'], $flow);
+    }
+
+    #[Test]
+    public function a_return_that_is_more_than_a_call_keeps_its_expression(): void
+    {
+        $flow = $this->flow('function a($x) { if ($x) { return $x; } return $this->b() + 1; }');
+
+        self::assertContains('condition $x -> return return $x [true]', $flow);
+        self::assertContains('call $this->b -> return return $this->b() + 1', $flow);
+    }
+
+    #[Test]
+    public function a_bare_return_is_just_return(): void
+    {
+        $flow = $this->flow('function a() { return; }');
+
+        self::assertSame(['start -> return return', 'return return -> end'], $flow);
+    }
+
+    #[Test]
+    public function a_call_on_a_new_object_keeps_its_parentheses_in_the_label(): void
+    {
+        $flow = $this->flow('function a() { (new Clock())->now(); }');
+
+        self::assertSame(['start -> call (new Clock())->now', 'call (new Clock())->now -> end'], $flow);
+    }
+
+    #[Test]
+    public function a_chain_on_a_new_object_is_parenthesised_once_at_its_root(): void
+    {
+        $flow = $this->flow('function a() { return (new Clock())->now()->format("c"); }');
+
+        self::assertSame([
+            'start -> call (new Clock())->now',
+            'call (new Clock())->now -> call (new Clock())->now()->format',
+            'call (new Clock())->now()->format -> return return',
+            'return return -> end',
+        ], $flow);
     }
 
     /**

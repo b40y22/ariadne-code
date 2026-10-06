@@ -92,7 +92,7 @@ final class ProceduralTest extends TestCase
         $graph = $this->analyze('class A { function m() { return helper(); } } function helper() { return (new A())->m(); }');
 
         self::assertContains('method:A::m -> function:helper', $this->calls($graph));
-        self::assertSame(1, count(array_filter($this->calls($graph), static fn(string $call) => str_starts_with($call, 'function:helper -> unresolved:'))));
+        self::assertContains('function:helper -> unresolved:(new A())->m', $this->calls($graph));
     }
 
     #[Test]
