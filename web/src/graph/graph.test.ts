@@ -1,0 +1,89 @@
+import { describe, expect, it } from 'vitest'
+import { nodeAtLine } from './lookup'
+import { toClassMap } from './toFlow'
+import type { Graph } from './types'
+
+const node = (id: string, type: Graph['nodes'][number]['type'], lineStart: number | null = null, lineEnd: number | null = null) => ({
+  id,
+  type,
+  name: id.replace(/^[a-z]+:/, '').split('::').pop() ?? id,
+  file: 'A.php',
+  lineStart,
+  lineEnd,
+  parent: null,
+})
+
+const edge = (from: string, to: string, type: Graph['edges'][number]['type'], line: number | null = null) => ({
+  from,
+  to,
+  type,
+  line,
+  label: null,
+})
+
+const graph: Graph = {
+  nodes: [
+    node('class:A', 'class', 1, 20),
+    node('method:A::a', 'method', 3, 9),
+    node('method:A::b', 'method', 11, 15),
+    node('unresolved:$x->go', 'unresolved'),
+    { ...node('flow:method:A::a#1', 'start', 3, 9), parent: 'method:A::a' },
+  ],
+  edges: [
+    edge('class:A', 'method:A::a', 'contains'),
+    edge('class:A', 'method:A::b', 'contains'),
+    edge('method:A::a', 'method:A::b', 'calls', 5),
+    edge('method:A::a', 'method:A::b', 'calls', 7),
+    edge('method:A::a', 'unresolved:$x->go', 'calls', 8),
+    edge('flow:method:A::a#1', 'method:A::b', 'flow'),
+  ],
+}
+
+describe('toClassMap', () => {
+  it('keeps classes, methods and unresolved targets but drops flow nodes', () => {
+    const { nodes } = toClassMap(graph)
+
+    expect(nodes.map((n) => n.id)).toEqual(['class:A', 'method:A::a', 'method:A::b', 'unresolved:$x->go'])
+  })
+
+  it('labels methods with parentheses', () => {
+    const labels = toClassMap(graph).nodes.map((n) => n.label)
+
+    expect(labels).toContain('a()')
+    expect(labels).toContain('A')
+  })
+
+  it('collapses repeated calls into one edge with a count', () => {
+    const { edges } = toClassMap(graph)
+    const call = edges.find((e) => e.source === 'method:A::a' && e.target === 'method:A::b')
+
+    expect(call?.label).toBe('×2')
+    expect(edges.filter((e) => e.source === 'method:A::a' && e.target === 'method:A::b')).toHaveLength(1)
+  })
+
+  it('leaves single calls unlabelled and omits flow edges', () => {
+    const { edges } = toClassMap(graph)
+
+    expect(edges.find((e) => e.target === 'unresolved:$x->go')?.label).toBeUndefined()
+    expect(edges.some((e) => e.source.startsWith('flow:'))).toBe(false)
+  })
+})
+
+describe('nodeAtLine', () => {
+  it('prefers the method over its class', () => {
+    expect(nodeAtLine(graph, 5)?.id).toBe('method:A::a')
+  })
+
+  it('falls back to the class between methods', () => {
+    expect(nodeAtLine(graph, 10)?.id).toBe('class:A')
+  })
+
+  it('includes both boundary lines', () => {
+    expect(nodeAtLine(graph, 3)?.id).toBe('method:A::a')
+    expect(nodeAtLine(graph, 15)?.id).toBe('method:A::b')
+  })
+
+  it('returns nothing outside every range', () => {
+    expect(nodeAtLine(graph, 99)).toBeUndefined()
+  })
+})
