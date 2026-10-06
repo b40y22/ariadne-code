@@ -1,24 +1,22 @@
 <script setup lang="ts">
 import type { Edge, Node } from '@vue-flow/core'
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
 
 import { AnalyzeError, analyze } from './api'
 import CodeEditor, { type Highlight } from './components/CodeEditor.vue'
 import GraphView from './components/GraphView.vue'
-import ReplayPanel, { type ExitChoice } from './components/ReplayPanel.vue'
+import ReplayPanel from './components/ReplayPanel.vue'
+import { usePaneSplit } from './composables/usePaneSplit'
+import { useReplay } from './composables/useReplay'
 import { layout } from './graph/layout'
 import { nodeAtLine } from './graph/lookup'
-import { advance, current, exits, jumpTo, primaryExit, startReplay, stepBack, visitedNodes, walkedEdges, type Step } from './graph/replay'
 import { toClassMap } from './graph/toFlow'
-import { isBackward, layoutEdges, toMethodFlow, type FlowNodeData } from './graph/toMethodFlow'
+import { layoutEdges, toMethodFlow } from './graph/toMethodFlow'
 import type { Graph } from './graph/types'
 import { SAMPLE_CODE, SAMPLE_FILE } from './sample'
 import { DEFAULT_PANEL } from './panel'
-import { clampSplit, DEFAULT_SPLIT, splitFromPointer } from './split'
-
-type View = { kind: 'map' } | { kind: 'flow'; methodId: string }
-
-const MAP: View = { kind: 'map' }
+import { readStored, readStoredNumber, writeStored } from './storage'
+import { hashFor, MAP, sameView, viewFromHash, type Selection, type View } from './view'
 
 const code = ref(SAMPLE_CODE)
 const fileName = ref(SAMPLE_FILE)
@@ -26,94 +24,21 @@ const graph = ref<Graph | null>(null)
 const view = ref<View>(MAP)
 const nodes = shallowRef<Node[]>([])
 const edges = shallowRef<Edge[]>([])
-const selected = ref<{ id: string; reveal: boolean } | null>(null)
+const selected = ref<Selection | null>(null)
 const error = ref<string | null>(null)
 const loading = ref(false)
 const graphView = ref<InstanceType<typeof GraphView>>()
 
+const replay = useReplay({ view, nodes, edges, selected })
+const { path, flowData, visited, shownEdges, choices, atEnd, takeExit, back, restart, jump } = replay
+
 // Unresolved calls are hidden on the class map until asked for: there are often more of them than real nodes.
 const UNRESOLVED_KEY = 'ariadne:show-unresolved'
-const showUnresolved = ref(localStorage.getItem(UNRESOLVED_KEY) === '1')
+const showUnresolved = ref(readStored(UNRESOLVED_KEY) === '1')
 const unresolvedCount = computed(() => graph.value?.nodes.filter((node) => node.type === 'unresolved').length ?? 0)
 
-// --- Execution replay: a walk through the method flow, one step at a time.
-const path = ref<Step[]>([])
-const flowData = computed(() => new Map(nodes.value.map((node) => [node.id, node.data as FlowNodeData])))
-const walked = computed(() => walkedEdges(path.value))
-const visited = computed<ReadonlySet<string>>(() => (view.value.kind === 'flow' ? visitedNodes(path.value) : new Set<string>()))
-
-const shownEdges = computed<Edge[]>(() =>
-  walked.value.size === 0 ? edges.value : edges.value.map((edge) => (walked.value.has(edge.id) ? { ...edge, class: `${String(edge.class ?? '')} is-walked` } : edge)),
-)
-
-const backward = (edge: Edge): boolean => isBackward(edge.source, edge.target)
-
-/** The ways out of the current step, the one that "next" would take first. */
-const choices = computed<ExitChoice[]>(() => {
-  const here = current(path.value)
-  const options = here === undefined ? [] : exits(edges.value, here.nodeId)
-  const first = primaryExit(options, backward)
-  const ordered = first === undefined ? options : [first, ...options.filter((edge) => edge !== first)]
-
-  return ordered.map((edge) => ({
-    edgeId: edge.id,
-    label: edge.label === undefined ? null : String(edge.label),
-    targetTitle: flowData.value.get(edge.target)?.title ?? edge.target,
-  }))
-})
-
-const atEnd = computed(() => flowData.value.get(current(path.value)?.nodeId ?? '')?.kind === 'end')
-
-function takeExit(edgeId: string): void {
-  const edge = edges.value.find((candidate) => candidate.id === edgeId)
-
-  if (edge !== undefined) {
-    path.value = advance(path.value, edge)
-  }
-}
-
-function stepNext(): void {
-  const first = choices.value[0]
-
-  if (first !== undefined) {
-    takeExit(first.edgeId)
-  }
-}
-
-// The replay drives the selection: the current step is highlighted in the graph and in the code.
-watch(path, (steps) => {
-  const here = current(steps)
-
-  if (view.value.kind === 'flow' && here !== undefined) {
-    selected.value = { id: here.nodeId, reveal: true }
-  }
-})
-
-function onKey(event: KeyboardEvent): void {
-  // Arrow keys belong to the editor and to the pane divider when they have the focus.
-  const inControl = event.target instanceof Element && event.target.closest('.monaco-editor, [role="separator"], input, textarea') !== null
-
-  if (view.value.kind !== 'flow' || inControl || event.altKey || event.ctrlKey || event.metaKey) {
-    return
-  }
-
-  if (event.key === 'ArrowRight') {
-    event.preventDefault()
-    stepNext()
-  } else if (event.key === 'ArrowLeft') {
-    event.preventDefault()
-    path.value = stepBack(path.value)
-  }
-}
-
-onMounted(() => {
-  window.addEventListener('keydown', onKey)
-  window.addEventListener('hashchange', onHashChange)
-})
-onBeforeUnmount(() => {
-  window.removeEventListener('keydown', onKey)
-  window.removeEventListener('hashchange', onHashChange)
-})
+onMounted(() => window.addEventListener('hashchange', onHashChange))
+onBeforeUnmount(() => window.removeEventListener('hashchange', onHashChange))
 
 /** The kinds of node that have a flow of their own. */
 const HAS_FLOW: ReadonlySet<string> = new Set(['method', 'function', 'script'])
@@ -162,18 +87,8 @@ const highlight = computed<Highlight | null>(() => {
   return { start: node.lineStart, end: node.lineEnd, reveal: selected.value?.reveal ?? false }
 })
 
-const HASH_KEY = 'method'
-
-function viewFromHash(): View {
-  const methodId = new URLSearchParams(location.hash.slice(1)).get(HASH_KEY)
-
-  return methodId === null ? MAP : { kind: 'flow', methodId }
-}
-
 function syncHash(next: View): void {
-  const hash = next.kind === 'flow' ? `#${HASH_KEY}=${encodeURIComponent(next.methodId)}` : ''
-
-  history.replaceState(null, '', location.pathname + location.search + hash)
+  history.replaceState(null, '', location.pathname + location.search + hashFor(next))
 }
 
 /** Lays out and shows a view of the graph. Returns false, leaving the current view, when it cannot be shown. */
@@ -189,10 +104,9 @@ async function show(result: Graph, next: View): Promise<boolean> {
 
     nodes.value = await layout(flow.nodes, layoutEdges(flow.edges), { direction: 'DOWN' })
     edges.value = flow.edges
-    const entry = flow.nodes.find((node) => node.data.kind === 'start')
-    path.value = entry === undefined ? [] : startReplay(entry.id)
+    replay.begin(flow.nodes.find((node) => node.data.kind === 'start')?.id)
   } else {
-    path.value = []
+    replay.begin(undefined)
     const map = toClassMap(result, { includeUnresolved: showUnresolved.value })
 
     nodes.value = await layout(map.nodes, map.edges)
@@ -212,7 +126,7 @@ async function run(): Promise<void> {
 
   try {
     const result = await analyze(code.value, fileName.value)
-    const wanted = graph.value === null ? viewFromHash() : view.value
+    const wanted = graph.value === null ? viewFromHash(location.hash) : view.value
     const stillThere = wanted.kind === 'map' || result.nodes.some((node) => node.id === wanted.methodId)
 
     graph.value = result
@@ -227,11 +141,9 @@ async function run(): Promise<void> {
   }
 }
 
-const sameView = (a: View, b: View): boolean => a.kind === b.kind && (a.kind === 'map' || (b.kind === 'flow' && a.methodId === b.methodId))
-
 /** Pasting a link or using the browser's back and forward buttons changes only the hash; follow it. */
 async function onHashChange(): Promise<void> {
-  const wanted = viewFromHash()
+  const wanted = viewFromHash(location.hash)
 
   if (graph.value === null || sameView(wanted, view.value)) {
     return
@@ -258,11 +170,7 @@ async function openFlow(methodId: string): Promise<void> {
 async function toggleUnresolved(): Promise<void> {
   showUnresolved.value = !showUnresolved.value
 
-  try {
-    localStorage.setItem(UNRESOLVED_KEY, showUnresolved.value ? '1' : '0')
-  } catch {
-    // The choice just won't be remembered.
-  }
+  writeStored(UNRESOLVED_KEY, showUnresolved.value ? '1' : '0')
 
   if (graph.value !== null && view.value.kind === 'map') {
     await show(graph.value, MAP)
@@ -301,60 +209,10 @@ function onCursorLine(line: number): void {
 }
 
 const PANEL_KEY = 'ariadne:replay-height'
-const replayHeight = ref(Number(localStorage.getItem(PANEL_KEY) ?? DEFAULT_PANEL) || DEFAULT_PANEL)
+const replayHeight = ref(readStoredNumber(PANEL_KEY, DEFAULT_PANEL))
+const saveReplayHeight = (): void => writeStored(PANEL_KEY, replayHeight.value)
 
-function saveReplayHeight(): void {
-  try {
-    localStorage.setItem(PANEL_KEY, String(replayHeight.value))
-  } catch {
-    // The height just won't be remembered.
-  }
-}
-
-const SPLIT_KEY = 'ariadne:split'
-const split = ref(clampSplit(Number(localStorage.getItem(SPLIT_KEY) ?? DEFAULT_SPLIT)))
-const panes = ref<HTMLElement>()
-let resizing = false
-
-function startResize(event: PointerEvent): void {
-  resizing = true
-  ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
-}
-
-function onResize(event: PointerEvent): void {
-  if (!resizing || !panes.value) {
-    return
-  }
-
-  const box = panes.value.getBoundingClientRect()
-  split.value = splitFromPointer(event.clientX, box.left, box.width)
-}
-
-function endResize(): void {
-  if (!resizing) {
-    return
-  }
-
-  resizing = false
-  saveSplit()
-}
-
-function nudgeSplit(event: KeyboardEvent): void {
-  const step = event.key === 'ArrowLeft' ? -2 : event.key === 'ArrowRight' ? 2 : 0
-
-  if (step !== 0) {
-    split.value = clampSplit(split.value + step)
-    saveSplit()
-  }
-}
-
-function saveSplit(): void {
-  try {
-    localStorage.setItem(SPLIT_KEY, String(split.value))
-  } catch {
-    // The split just won't be remembered.
-  }
-}
+const { split, startResize, onResize, endResize, nudgeSplit } = usePaneSplit()
 
 onMounted(run)
 </script>
@@ -428,9 +286,9 @@ onMounted(run)
           :at-end="atEnd"
           @settled="saveReplayHeight"
           @next="takeExit"
-          @back="path = stepBack(path)"
-          @reset="path = path.slice(0, 1)"
-          @jump="(index: number) => (path = jumpTo(path, index))"
+          @back="back"
+          @reset="restart"
+          @jump="jump"
         />
       </section>
       <div
