@@ -122,7 +122,7 @@ final class CallGraphVisitor extends NodeVisitorAbstract
         ));
         $this->graph->addEdge(new Edge(self::classId($this->class), $id, EdgeType::Contains));
 
-        (new MethodFlowBuilder($this->graph, $this->reader, $this->file, $id))->build($node);
+        new MethodFlowBuilder($this->graph, $this->reader, $this->file, $id)->build($node);
 
         $this->methodIndex[$this->class][$node->name->toLowerString()] = $id;
         $this->method = $id;

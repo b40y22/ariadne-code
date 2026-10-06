@@ -15,11 +15,11 @@ use JsonException;
  */
 final readonly class AnalyzeEndpoint
 {
-    public const MAX_BODY_BYTES = 1_000_000;
+    public const int MAX_BODY_BYTES = 1_000_000;
 
-    private const DEFAULT_FILE = 'input.php';
+    private const string DEFAULT_FILE = 'input.php';
 
-    private const MAX_FILE_NAME = 255;
+    private const int MAX_FILE_NAME = 255;
 
     public function __construct(private PhpAnalyzer $analyzer) {}
 

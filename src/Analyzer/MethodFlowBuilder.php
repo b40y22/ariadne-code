@@ -43,7 +43,7 @@ use PhpParser\PrettyPrinter\Standard;
  */
 final class MethodFlowBuilder
 {
-    private const MAX_LABEL = 60;
+    private const int MAX_LABEL = 60;
 
     private int $counter = 0;
 

@@ -6,10 +6,11 @@ namespace Ariadne\Cli;
 
 use Ariadne\Analyzer\AnalysisException;
 use Ariadne\Analyzer\PhpAnalyzer;
+use JsonException;
 
 final readonly class Application
 {
-    private const USAGE = "Usage: ariadne analyze <file.php>\n";
+    private const string USAGE = "Usage: ariadne analyze <file.php>\n";
 
     public function __construct(private PhpAnalyzer $analyzer) {}
 
@@ -17,6 +18,8 @@ final readonly class Application
      * @param list<string> $argv Raw argv, including the script name.
      * @param resource $stdout
      * @param resource $stderr
+     * @return int
+     * @throws JsonException
      */
     public function run(array $argv, $stdout, $stderr): int
     {

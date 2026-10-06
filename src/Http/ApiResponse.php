@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Ariadne\Http;
 
+use JsonException;
+
 final readonly class ApiResponse
 {
     /**
@@ -16,7 +18,11 @@ final readonly class ApiResponse
     ) {}
 
     /**
+     * @param int $status
+     * @param mixed $data
      * @param array<string, string> $headers
+     * @return self
+     * @throws JsonException
      */
     public static function json(int $status, mixed $data, array $headers = []): self
     {

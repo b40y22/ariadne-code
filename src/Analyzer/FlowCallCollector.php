@@ -32,7 +32,7 @@ final class FlowCallCollector extends NodeVisitorAbstract
     public static function collect(AstNode $node, CallSiteReader $reader): array
     {
         $collector = new self($reader);
-        (new NodeTraverser($collector))->traverse([$node]);
+        new NodeTraverser($collector)->traverse([$node]);
 
         return $collector->calls;
     }

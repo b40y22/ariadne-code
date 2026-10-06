@@ -17,7 +17,7 @@ final readonly class PhpAnalyzer
 
     public function __construct(?Parser $parser = null)
     {
-        $this->parser = $parser ?? (new ParserFactory())->createForHostVersion();
+        $this->parser = $parser ?? new ParserFactory()->createForHostVersion();
     }
 
     /**
