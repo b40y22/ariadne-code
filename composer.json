@@ -11,7 +11,8 @@
   "autoload-dev": {
     "psr-4": {
       "Ariadne\\Tests\\": "tests/"
-    }
+    },
+    "exclude-from-classmap": ["tests/fixtures/"]
   },
   "bin": ["bin/ariadne"],
   "scripts": {
