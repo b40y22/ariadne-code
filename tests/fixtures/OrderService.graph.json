@@ -6,7 +6,8 @@
             "name": "Fixtures\\OrderService",
             "file": "OrderService.php",
             "lineStart": 7,
-            "lineEnd": 36
+            "lineEnd": 36,
+            "parent": null
         },
         {
             "id": "method:Fixtures\\OrderService::__construct",
@@ -14,7 +15,26 @@
             "name": "__construct",
             "file": "OrderService.php",
             "lineStart": 9,
-            "lineEnd": 9
+            "lineEnd": 9,
+            "parent": null
+        },
+        {
+            "id": "flow:method:Fixtures\\OrderService::__construct#1",
+            "type": "start",
+            "name": "start",
+            "file": "OrderService.php",
+            "lineStart": 9,
+            "lineEnd": 9,
+            "parent": "method:Fixtures\\OrderService::__construct"
+        },
+        {
+            "id": "flow:method:Fixtures\\OrderService::__construct#2",
+            "type": "end",
+            "name": "end",
+            "file": "OrderService.php",
+            "lineStart": 9,
+            "lineEnd": 9,
+            "parent": "method:Fixtures\\OrderService::__construct"
         },
         {
             "id": "method:Fixtures\\OrderService::createOrder",
@@ -22,7 +42,71 @@
             "name": "createOrder",
             "file": "OrderService.php",
             "lineStart": 11,
-            "lineEnd": 18
+            "lineEnd": 18,
+            "parent": null
+        },
+        {
+            "id": "flow:method:Fixtures\\OrderService::createOrder#1",
+            "type": "start",
+            "name": "start",
+            "file": "OrderService.php",
+            "lineStart": 11,
+            "lineEnd": 18,
+            "parent": "method:Fixtures\\OrderService::createOrder"
+        },
+        {
+            "id": "flow:method:Fixtures\\OrderService::createOrder#2",
+            "type": "call",
+            "name": "$this->validate",
+            "file": "OrderService.php",
+            "lineStart": 13,
+            "lineEnd": 13,
+            "parent": "method:Fixtures\\OrderService::createOrder"
+        },
+        {
+            "id": "flow:method:Fixtures\\OrderService::createOrder#3",
+            "type": "call",
+            "name": "$this->calculateTotal",
+            "file": "OrderService.php",
+            "lineStart": 14,
+            "lineEnd": 14,
+            "parent": "method:Fixtures\\OrderService::createOrder"
+        },
+        {
+            "id": "flow:method:Fixtures\\OrderService::createOrder#4",
+            "type": "call",
+            "name": "$this->log",
+            "file": "OrderService.php",
+            "lineStart": 15,
+            "lineEnd": 15,
+            "parent": "method:Fixtures\\OrderService::createOrder"
+        },
+        {
+            "id": "flow:method:Fixtures\\OrderService::createOrder#5",
+            "type": "call",
+            "name": "$this->orders->save",
+            "file": "OrderService.php",
+            "lineStart": 17,
+            "lineEnd": 17,
+            "parent": "method:Fixtures\\OrderService::createOrder"
+        },
+        {
+            "id": "flow:method:Fixtures\\OrderService::createOrder#6",
+            "type": "return",
+            "name": "return $this->orders->save($data, $total)",
+            "file": "OrderService.php",
+            "lineStart": 17,
+            "lineEnd": 17,
+            "parent": "method:Fixtures\\OrderService::createOrder"
+        },
+        {
+            "id": "flow:method:Fixtures\\OrderService::createOrder#7",
+            "type": "end",
+            "name": "end",
+            "file": "OrderService.php",
+            "lineStart": 11,
+            "lineEnd": 18,
+            "parent": "method:Fixtures\\OrderService::createOrder"
         },
         {
             "id": "method:Fixtures\\OrderService::validate",
@@ -30,7 +114,44 @@
             "name": "validate",
             "file": "OrderService.php",
             "lineStart": 20,
-            "lineEnd": 25
+            "lineEnd": 25,
+            "parent": null
+        },
+        {
+            "id": "flow:method:Fixtures\\OrderService::validate#1",
+            "type": "start",
+            "name": "start",
+            "file": "OrderService.php",
+            "lineStart": 20,
+            "lineEnd": 25,
+            "parent": "method:Fixtures\\OrderService::validate"
+        },
+        {
+            "id": "flow:method:Fixtures\\OrderService::validate#2",
+            "type": "condition",
+            "name": "$data === []",
+            "file": "OrderService.php",
+            "lineStart": 22,
+            "lineEnd": 22,
+            "parent": "method:Fixtures\\OrderService::validate"
+        },
+        {
+            "id": "flow:method:Fixtures\\OrderService::validate#3",
+            "type": "throw",
+            "name": "throw new \\InvalidArgumentException('Empty order')",
+            "file": "OrderService.php",
+            "lineStart": 23,
+            "lineEnd": 23,
+            "parent": "method:Fixtures\\OrderService::validate"
+        },
+        {
+            "id": "flow:method:Fixtures\\OrderService::validate#4",
+            "type": "end",
+            "name": "end",
+            "file": "OrderService.php",
+            "lineStart": 20,
+            "lineEnd": 25,
+            "parent": "method:Fixtures\\OrderService::validate"
         },
         {
             "id": "method:Fixtures\\OrderService::calculateTotal",
@@ -38,7 +159,44 @@
             "name": "calculateTotal",
             "file": "OrderService.php",
             "lineStart": 27,
-            "lineEnd": 30
+            "lineEnd": 30,
+            "parent": null
+        },
+        {
+            "id": "flow:method:Fixtures\\OrderService::calculateTotal#1",
+            "type": "start",
+            "name": "start",
+            "file": "OrderService.php",
+            "lineStart": 27,
+            "lineEnd": 30,
+            "parent": "method:Fixtures\\OrderService::calculateTotal"
+        },
+        {
+            "id": "flow:method:Fixtures\\OrderService::calculateTotal#2",
+            "type": "call",
+            "name": "self::roundMoney",
+            "file": "OrderService.php",
+            "lineStart": 29,
+            "lineEnd": 29,
+            "parent": "method:Fixtures\\OrderService::calculateTotal"
+        },
+        {
+            "id": "flow:method:Fixtures\\OrderService::calculateTotal#3",
+            "type": "return",
+            "name": "return self::roundMoney(array_sum($data))",
+            "file": "OrderService.php",
+            "lineStart": 29,
+            "lineEnd": 29,
+            "parent": "method:Fixtures\\OrderService::calculateTotal"
+        },
+        {
+            "id": "flow:method:Fixtures\\OrderService::calculateTotal#4",
+            "type": "end",
+            "name": "end",
+            "file": "OrderService.php",
+            "lineStart": 27,
+            "lineEnd": 30,
+            "parent": "method:Fixtures\\OrderService::calculateTotal"
         },
         {
             "id": "method:Fixtures\\OrderService::roundMoney",
@@ -46,7 +204,35 @@
             "name": "roundMoney",
             "file": "OrderService.php",
             "lineStart": 32,
-            "lineEnd": 35
+            "lineEnd": 35,
+            "parent": null
+        },
+        {
+            "id": "flow:method:Fixtures\\OrderService::roundMoney#1",
+            "type": "start",
+            "name": "start",
+            "file": "OrderService.php",
+            "lineStart": 32,
+            "lineEnd": 35,
+            "parent": "method:Fixtures\\OrderService::roundMoney"
+        },
+        {
+            "id": "flow:method:Fixtures\\OrderService::roundMoney#2",
+            "type": "return",
+            "name": "return round($value, 2)",
+            "file": "OrderService.php",
+            "lineStart": 34,
+            "lineEnd": 34,
+            "parent": "method:Fixtures\\OrderService::roundMoney"
+        },
+        {
+            "id": "flow:method:Fixtures\\OrderService::roundMoney#3",
+            "type": "end",
+            "name": "end",
+            "file": "OrderService.php",
+            "lineStart": 32,
+            "lineEnd": 35,
+            "parent": "method:Fixtures\\OrderService::roundMoney"
         },
         {
             "id": "unresolved:$this->log",
@@ -54,7 +240,8 @@
             "name": "$this->log",
             "file": null,
             "lineStart": null,
-            "lineEnd": null
+            "lineEnd": null,
+            "parent": null
         },
         {
             "id": "unresolved:$this->orders->save",
@@ -62,7 +249,8 @@
             "name": "$this->orders->save",
             "file": null,
             "lineStart": null,
-            "lineEnd": null
+            "lineEnd": null,
+            "parent": null
         }
     ],
     "edges": [
@@ -70,61 +258,183 @@
             "from": "class:Fixtures\\OrderService",
             "to": "method:Fixtures\\OrderService::__construct",
             "type": "contains",
-            "line": null
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:Fixtures\\OrderService::__construct#1",
+            "to": "flow:method:Fixtures\\OrderService::__construct#2",
+            "type": "flow",
+            "line": null,
+            "label": null
         },
         {
             "from": "class:Fixtures\\OrderService",
             "to": "method:Fixtures\\OrderService::createOrder",
             "type": "contains",
-            "line": null
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:Fixtures\\OrderService::createOrder#1",
+            "to": "flow:method:Fixtures\\OrderService::createOrder#2",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:Fixtures\\OrderService::createOrder#2",
+            "to": "flow:method:Fixtures\\OrderService::createOrder#3",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:Fixtures\\OrderService::createOrder#3",
+            "to": "flow:method:Fixtures\\OrderService::createOrder#4",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:Fixtures\\OrderService::createOrder#4",
+            "to": "flow:method:Fixtures\\OrderService::createOrder#5",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:Fixtures\\OrderService::createOrder#5",
+            "to": "flow:method:Fixtures\\OrderService::createOrder#6",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:Fixtures\\OrderService::createOrder#6",
+            "to": "flow:method:Fixtures\\OrderService::createOrder#7",
+            "type": "flow",
+            "line": null,
+            "label": null
         },
         {
             "from": "class:Fixtures\\OrderService",
             "to": "method:Fixtures\\OrderService::validate",
             "type": "contains",
-            "line": null
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:Fixtures\\OrderService::validate#1",
+            "to": "flow:method:Fixtures\\OrderService::validate#2",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:Fixtures\\OrderService::validate#2",
+            "to": "flow:method:Fixtures\\OrderService::validate#3",
+            "type": "flow",
+            "line": null,
+            "label": "true"
+        },
+        {
+            "from": "flow:method:Fixtures\\OrderService::validate#2",
+            "to": "flow:method:Fixtures\\OrderService::validate#4",
+            "type": "flow",
+            "line": null,
+            "label": "false"
+        },
+        {
+            "from": "flow:method:Fixtures\\OrderService::validate#3",
+            "to": "flow:method:Fixtures\\OrderService::validate#4",
+            "type": "flow",
+            "line": null,
+            "label": null
         },
         {
             "from": "class:Fixtures\\OrderService",
             "to": "method:Fixtures\\OrderService::calculateTotal",
             "type": "contains",
-            "line": null
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:Fixtures\\OrderService::calculateTotal#1",
+            "to": "flow:method:Fixtures\\OrderService::calculateTotal#2",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:Fixtures\\OrderService::calculateTotal#2",
+            "to": "flow:method:Fixtures\\OrderService::calculateTotal#3",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:Fixtures\\OrderService::calculateTotal#3",
+            "to": "flow:method:Fixtures\\OrderService::calculateTotal#4",
+            "type": "flow",
+            "line": null,
+            "label": null
         },
         {
             "from": "class:Fixtures\\OrderService",
             "to": "method:Fixtures\\OrderService::roundMoney",
             "type": "contains",
-            "line": null
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:Fixtures\\OrderService::roundMoney#1",
+            "to": "flow:method:Fixtures\\OrderService::roundMoney#2",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:Fixtures\\OrderService::roundMoney#2",
+            "to": "flow:method:Fixtures\\OrderService::roundMoney#3",
+            "type": "flow",
+            "line": null,
+            "label": null
         },
         {
             "from": "method:Fixtures\\OrderService::createOrder",
             "to": "method:Fixtures\\OrderService::validate",
             "type": "calls",
-            "line": 13
+            "line": 13,
+            "label": null
         },
         {
             "from": "method:Fixtures\\OrderService::createOrder",
             "to": "method:Fixtures\\OrderService::calculateTotal",
             "type": "calls",
-            "line": 14
+            "line": 14,
+            "label": null
         },
         {
             "from": "method:Fixtures\\OrderService::createOrder",
             "to": "unresolved:$this->log",
             "type": "calls",
-            "line": 15
+            "line": 15,
+            "label": null
         },
         {
             "from": "method:Fixtures\\OrderService::createOrder",
             "to": "unresolved:$this->orders->save",
             "type": "calls",
-            "line": 17
+            "line": 17,
+            "label": null
         },
         {
             "from": "method:Fixtures\\OrderService::calculateTotal",
             "to": "method:Fixtures\\OrderService::roundMoney",
             "type": "calls",
-            "line": 29
+            "line": 29,
+            "label": null
         }
     ]
 }

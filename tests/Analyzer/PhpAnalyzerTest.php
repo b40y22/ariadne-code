@@ -9,21 +9,32 @@ use Ariadne\Analyzer\PhpAnalyzer;
 use Ariadne\Graph\EdgeType;
 use Ariadne\Graph\Graph;
 use Ariadne\Graph\NodeType;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
 final class PhpAnalyzerTest extends TestCase
 {
-    #[Test]
-    public function it_matches_the_order_service_snapshot(): void
+    /**
+     * @return iterable<string, array{string}>
+     */
+    public static function fixtures(): iterable
     {
-        $code = file_get_contents(__DIR__ . '/../fixtures/OrderService.php');
+        yield 'OrderService' => ['OrderService'];
+        yield 'ShippingService' => ['ShippingService'];
+    }
+
+    #[Test]
+    #[DataProvider('fixtures')]
+    public function it_matches_the_fixture_snapshot(string $fixture): void
+    {
+        $code = file_get_contents(__DIR__ . "/../fixtures/{$fixture}.php");
         self::assertIsString($code);
 
-        $graph = (new PhpAnalyzer())->analyze($code, 'OrderService.php');
+        $graph = (new PhpAnalyzer())->analyze($code, "{$fixture}.php");
 
         self::assertJsonStringEqualsJsonFile(
-            __DIR__ . '/../fixtures/OrderService.graph.json',
+            __DIR__ . "/../fixtures/{$fixture}.graph.json",
             json_encode($graph, JSON_THROW_ON_ERROR),
         );
     }

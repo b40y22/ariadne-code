@@ -1,0 +1,564 @@
+{
+    "nodes": [
+        {
+            "id": "class:Fixtures\\ShippingService",
+            "type": "class",
+            "name": "Fixtures\\ShippingService",
+            "file": "ShippingService.php",
+            "lineStart": 7,
+            "lineEnd": 48,
+            "parent": null
+        },
+        {
+            "id": "method:Fixtures\\ShippingService::ship",
+            "type": "method",
+            "name": "ship",
+            "file": "ShippingService.php",
+            "lineStart": 9,
+            "lineEnd": 31,
+            "parent": null
+        },
+        {
+            "id": "flow:method:Fixtures\\ShippingService::ship#1",
+            "type": "start",
+            "name": "start",
+            "file": "ShippingService.php",
+            "lineStart": 9,
+            "lineEnd": 31,
+            "parent": "method:Fixtures\\ShippingService::ship"
+        },
+        {
+            "id": "flow:method:Fixtures\\ShippingService::ship#2",
+            "type": "condition",
+            "name": "$items === []",
+            "file": "ShippingService.php",
+            "lineStart": 11,
+            "lineEnd": 11,
+            "parent": "method:Fixtures\\ShippingService::ship"
+        },
+        {
+            "id": "flow:method:Fixtures\\ShippingService::ship#3",
+            "type": "return",
+            "name": "return false",
+            "file": "ShippingService.php",
+            "lineStart": 12,
+            "lineEnd": 12,
+            "parent": "method:Fixtures\\ShippingService::ship"
+        },
+        {
+            "id": "flow:method:Fixtures\\ShippingService::ship#4",
+            "type": "loop",
+            "name": "foreach ($items as $item)",
+            "file": "ShippingService.php",
+            "lineStart": 15,
+            "lineEnd": 28,
+            "parent": "method:Fixtures\\ShippingService::ship"
+        },
+        {
+            "id": "flow:method:Fixtures\\ShippingService::ship#5",
+            "type": "call",
+            "name": "$this->inStock",
+            "file": "ShippingService.php",
+            "lineStart": 16,
+            "lineEnd": 16,
+            "parent": "method:Fixtures\\ShippingService::ship"
+        },
+        {
+            "id": "flow:method:Fixtures\\ShippingService::ship#6",
+            "type": "condition",
+            "name": "!$this->inStock($item)",
+            "file": "ShippingService.php",
+            "lineStart": 16,
+            "lineEnd": 16,
+            "parent": "method:Fixtures\\ShippingService::ship"
+        },
+        {
+            "id": "flow:method:Fixtures\\ShippingService::ship#7",
+            "type": "try",
+            "name": "try",
+            "file": "ShippingService.php",
+            "lineStart": 20,
+            "lineEnd": 27,
+            "parent": "method:Fixtures\\ShippingService::ship"
+        },
+        {
+            "id": "flow:method:Fixtures\\ShippingService::ship#8",
+            "type": "call",
+            "name": "$this->pack",
+            "file": "ShippingService.php",
+            "lineStart": 21,
+            "lineEnd": 21,
+            "parent": "method:Fixtures\\ShippingService::ship"
+        },
+        {
+            "id": "flow:method:Fixtures\\ShippingService::ship#9",
+            "type": "catch",
+            "name": "catch (PackingException $e)",
+            "file": "ShippingService.php",
+            "lineStart": 22,
+            "lineEnd": 25,
+            "parent": "method:Fixtures\\ShippingService::ship"
+        },
+        {
+            "id": "flow:method:Fixtures\\ShippingService::ship#10",
+            "type": "call",
+            "name": "$this->report",
+            "file": "ShippingService.php",
+            "lineStart": 23,
+            "lineEnd": 23,
+            "parent": "method:Fixtures\\ShippingService::ship"
+        },
+        {
+            "id": "flow:method:Fixtures\\ShippingService::ship#11",
+            "type": "finally",
+            "name": "finally",
+            "file": "ShippingService.php",
+            "lineStart": 25,
+            "lineEnd": 27,
+            "parent": "method:Fixtures\\ShippingService::ship"
+        },
+        {
+            "id": "flow:method:Fixtures\\ShippingService::ship#12",
+            "type": "call",
+            "name": "$this->release",
+            "file": "ShippingService.php",
+            "lineStart": 26,
+            "lineEnd": 26,
+            "parent": "method:Fixtures\\ShippingService::ship"
+        },
+        {
+            "id": "flow:method:Fixtures\\ShippingService::ship#13",
+            "type": "call",
+            "name": "$this->dispatch",
+            "file": "ShippingService.php",
+            "lineStart": 30,
+            "lineEnd": 30,
+            "parent": "method:Fixtures\\ShippingService::ship"
+        },
+        {
+            "id": "flow:method:Fixtures\\ShippingService::ship#14",
+            "type": "return",
+            "name": "return $this->dispatch()",
+            "file": "ShippingService.php",
+            "lineStart": 30,
+            "lineEnd": 30,
+            "parent": "method:Fixtures\\ShippingService::ship"
+        },
+        {
+            "id": "flow:method:Fixtures\\ShippingService::ship#15",
+            "type": "end",
+            "name": "end",
+            "file": "ShippingService.php",
+            "lineStart": 9,
+            "lineEnd": 31,
+            "parent": "method:Fixtures\\ShippingService::ship"
+        },
+        {
+            "id": "method:Fixtures\\ShippingService::inStock",
+            "type": "method",
+            "name": "inStock",
+            "file": "ShippingService.php",
+            "lineStart": 33,
+            "lineEnd": 36,
+            "parent": null
+        },
+        {
+            "id": "flow:method:Fixtures\\ShippingService::inStock#1",
+            "type": "start",
+            "name": "start",
+            "file": "ShippingService.php",
+            "lineStart": 33,
+            "lineEnd": 36,
+            "parent": "method:Fixtures\\ShippingService::inStock"
+        },
+        {
+            "id": "flow:method:Fixtures\\ShippingService::inStock#2",
+            "type": "return",
+            "name": "return $item !== ''",
+            "file": "ShippingService.php",
+            "lineStart": 35,
+            "lineEnd": 35,
+            "parent": "method:Fixtures\\ShippingService::inStock"
+        },
+        {
+            "id": "flow:method:Fixtures\\ShippingService::inStock#3",
+            "type": "end",
+            "name": "end",
+            "file": "ShippingService.php",
+            "lineStart": 33,
+            "lineEnd": 36,
+            "parent": "method:Fixtures\\ShippingService::inStock"
+        },
+        {
+            "id": "method:Fixtures\\ShippingService::pack",
+            "type": "method",
+            "name": "pack",
+            "file": "ShippingService.php",
+            "lineStart": 38,
+            "lineEnd": 38,
+            "parent": null
+        },
+        {
+            "id": "flow:method:Fixtures\\ShippingService::pack#1",
+            "type": "start",
+            "name": "start",
+            "file": "ShippingService.php",
+            "lineStart": 38,
+            "lineEnd": 38,
+            "parent": "method:Fixtures\\ShippingService::pack"
+        },
+        {
+            "id": "flow:method:Fixtures\\ShippingService::pack#2",
+            "type": "end",
+            "name": "end",
+            "file": "ShippingService.php",
+            "lineStart": 38,
+            "lineEnd": 38,
+            "parent": "method:Fixtures\\ShippingService::pack"
+        },
+        {
+            "id": "method:Fixtures\\ShippingService::report",
+            "type": "method",
+            "name": "report",
+            "file": "ShippingService.php",
+            "lineStart": 40,
+            "lineEnd": 40,
+            "parent": null
+        },
+        {
+            "id": "flow:method:Fixtures\\ShippingService::report#1",
+            "type": "start",
+            "name": "start",
+            "file": "ShippingService.php",
+            "lineStart": 40,
+            "lineEnd": 40,
+            "parent": "method:Fixtures\\ShippingService::report"
+        },
+        {
+            "id": "flow:method:Fixtures\\ShippingService::report#2",
+            "type": "end",
+            "name": "end",
+            "file": "ShippingService.php",
+            "lineStart": 40,
+            "lineEnd": 40,
+            "parent": "method:Fixtures\\ShippingService::report"
+        },
+        {
+            "id": "method:Fixtures\\ShippingService::release",
+            "type": "method",
+            "name": "release",
+            "file": "ShippingService.php",
+            "lineStart": 42,
+            "lineEnd": 42,
+            "parent": null
+        },
+        {
+            "id": "flow:method:Fixtures\\ShippingService::release#1",
+            "type": "start",
+            "name": "start",
+            "file": "ShippingService.php",
+            "lineStart": 42,
+            "lineEnd": 42,
+            "parent": "method:Fixtures\\ShippingService::release"
+        },
+        {
+            "id": "flow:method:Fixtures\\ShippingService::release#2",
+            "type": "end",
+            "name": "end",
+            "file": "ShippingService.php",
+            "lineStart": 42,
+            "lineEnd": 42,
+            "parent": "method:Fixtures\\ShippingService::release"
+        },
+        {
+            "id": "method:Fixtures\\ShippingService::dispatch",
+            "type": "method",
+            "name": "dispatch",
+            "file": "ShippingService.php",
+            "lineStart": 44,
+            "lineEnd": 47,
+            "parent": null
+        },
+        {
+            "id": "flow:method:Fixtures\\ShippingService::dispatch#1",
+            "type": "start",
+            "name": "start",
+            "file": "ShippingService.php",
+            "lineStart": 44,
+            "lineEnd": 47,
+            "parent": "method:Fixtures\\ShippingService::dispatch"
+        },
+        {
+            "id": "flow:method:Fixtures\\ShippingService::dispatch#2",
+            "type": "return",
+            "name": "return true",
+            "file": "ShippingService.php",
+            "lineStart": 46,
+            "lineEnd": 46,
+            "parent": "method:Fixtures\\ShippingService::dispatch"
+        },
+        {
+            "id": "flow:method:Fixtures\\ShippingService::dispatch#3",
+            "type": "end",
+            "name": "end",
+            "file": "ShippingService.php",
+            "lineStart": 44,
+            "lineEnd": 47,
+            "parent": "method:Fixtures\\ShippingService::dispatch"
+        }
+    ],
+    "edges": [
+        {
+            "from": "class:Fixtures\\ShippingService",
+            "to": "method:Fixtures\\ShippingService::ship",
+            "type": "contains",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:Fixtures\\ShippingService::ship#1",
+            "to": "flow:method:Fixtures\\ShippingService::ship#2",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:Fixtures\\ShippingService::ship#2",
+            "to": "flow:method:Fixtures\\ShippingService::ship#3",
+            "type": "flow",
+            "line": null,
+            "label": "true"
+        },
+        {
+            "from": "flow:method:Fixtures\\ShippingService::ship#2",
+            "to": "flow:method:Fixtures\\ShippingService::ship#4",
+            "type": "flow",
+            "line": null,
+            "label": "false"
+        },
+        {
+            "from": "flow:method:Fixtures\\ShippingService::ship#4",
+            "to": "flow:method:Fixtures\\ShippingService::ship#5",
+            "type": "flow",
+            "line": null,
+            "label": "body"
+        },
+        {
+            "from": "flow:method:Fixtures\\ShippingService::ship#5",
+            "to": "flow:method:Fixtures\\ShippingService::ship#6",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:Fixtures\\ShippingService::ship#6",
+            "to": "flow:method:Fixtures\\ShippingService::ship#4",
+            "type": "flow",
+            "line": null,
+            "label": "true"
+        },
+        {
+            "from": "flow:method:Fixtures\\ShippingService::ship#6",
+            "to": "flow:method:Fixtures\\ShippingService::ship#7",
+            "type": "flow",
+            "line": null,
+            "label": "false"
+        },
+        {
+            "from": "flow:method:Fixtures\\ShippingService::ship#7",
+            "to": "flow:method:Fixtures\\ShippingService::ship#8",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:Fixtures\\ShippingService::ship#7",
+            "to": "flow:method:Fixtures\\ShippingService::ship#9",
+            "type": "flow",
+            "line": null,
+            "label": "exception"
+        },
+        {
+            "from": "flow:method:Fixtures\\ShippingService::ship#9",
+            "to": "flow:method:Fixtures\\ShippingService::ship#10",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:Fixtures\\ShippingService::ship#8",
+            "to": "flow:method:Fixtures\\ShippingService::ship#11",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:Fixtures\\ShippingService::ship#11",
+            "to": "flow:method:Fixtures\\ShippingService::ship#12",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:Fixtures\\ShippingService::ship#12",
+            "to": "flow:method:Fixtures\\ShippingService::ship#4",
+            "type": "flow",
+            "line": null,
+            "label": "next"
+        },
+        {
+            "from": "flow:method:Fixtures\\ShippingService::ship#4",
+            "to": "flow:method:Fixtures\\ShippingService::ship#13",
+            "type": "flow",
+            "line": null,
+            "label": "exit"
+        },
+        {
+            "from": "flow:method:Fixtures\\ShippingService::ship#10",
+            "to": "flow:method:Fixtures\\ShippingService::ship#13",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:Fixtures\\ShippingService::ship#13",
+            "to": "flow:method:Fixtures\\ShippingService::ship#14",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:Fixtures\\ShippingService::ship#3",
+            "to": "flow:method:Fixtures\\ShippingService::ship#15",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:Fixtures\\ShippingService::ship#14",
+            "to": "flow:method:Fixtures\\ShippingService::ship#15",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "class:Fixtures\\ShippingService",
+            "to": "method:Fixtures\\ShippingService::inStock",
+            "type": "contains",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:Fixtures\\ShippingService::inStock#1",
+            "to": "flow:method:Fixtures\\ShippingService::inStock#2",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:Fixtures\\ShippingService::inStock#2",
+            "to": "flow:method:Fixtures\\ShippingService::inStock#3",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "class:Fixtures\\ShippingService",
+            "to": "method:Fixtures\\ShippingService::pack",
+            "type": "contains",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:Fixtures\\ShippingService::pack#1",
+            "to": "flow:method:Fixtures\\ShippingService::pack#2",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "class:Fixtures\\ShippingService",
+            "to": "method:Fixtures\\ShippingService::report",
+            "type": "contains",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:Fixtures\\ShippingService::report#1",
+            "to": "flow:method:Fixtures\\ShippingService::report#2",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "class:Fixtures\\ShippingService",
+            "to": "method:Fixtures\\ShippingService::release",
+            "type": "contains",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:Fixtures\\ShippingService::release#1",
+            "to": "flow:method:Fixtures\\ShippingService::release#2",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "class:Fixtures\\ShippingService",
+            "to": "method:Fixtures\\ShippingService::dispatch",
+            "type": "contains",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:Fixtures\\ShippingService::dispatch#1",
+            "to": "flow:method:Fixtures\\ShippingService::dispatch#2",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:Fixtures\\ShippingService::dispatch#2",
+            "to": "flow:method:Fixtures\\ShippingService::dispatch#3",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "method:Fixtures\\ShippingService::ship",
+            "to": "method:Fixtures\\ShippingService::inStock",
+            "type": "calls",
+            "line": 16,
+            "label": null
+        },
+        {
+            "from": "method:Fixtures\\ShippingService::ship",
+            "to": "method:Fixtures\\ShippingService::pack",
+            "type": "calls",
+            "line": 21,
+            "label": null
+        },
+        {
+            "from": "method:Fixtures\\ShippingService::ship",
+            "to": "method:Fixtures\\ShippingService::report",
+            "type": "calls",
+            "line": 23,
+            "label": null
+        },
+        {
+            "from": "method:Fixtures\\ShippingService::ship",
+            "to": "method:Fixtures\\ShippingService::release",
+            "type": "calls",
+            "line": 26,
+            "label": null
+        },
+        {
+            "from": "method:Fixtures\\ShippingService::ship",
+            "to": "method:Fixtures\\ShippingService::dispatch",
+            "type": "calls",
+            "line": 30,
+            "label": null
+        }
+    ]
+}

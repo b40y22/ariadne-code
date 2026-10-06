@@ -37,11 +37,11 @@ final class GraphTest extends TestCase
 
         self::assertSame([
             'nodes' => [
-                ['id' => 'method:a', 'type' => 'method', 'name' => 'a', 'file' => 'A.php', 'lineStart' => 3, 'lineEnd' => 9],
-                ['id' => 'method:b', 'type' => 'method', 'name' => 'b', 'file' => null, 'lineStart' => null, 'lineEnd' => null],
+                ['id' => 'method:a', 'type' => 'method', 'name' => 'a', 'file' => 'A.php', 'lineStart' => 3, 'lineEnd' => 9, 'parent' => null],
+                ['id' => 'method:b', 'type' => 'method', 'name' => 'b', 'file' => null, 'lineStart' => null, 'lineEnd' => null, 'parent' => null],
             ],
             'edges' => [
-                ['from' => 'method:a', 'to' => 'method:b', 'type' => 'calls', 'line' => 5],
+                ['from' => 'method:a', 'to' => 'method:b', 'type' => 'calls', 'line' => 5, 'label' => null],
             ],
         ], json_decode(json_encode($graph, JSON_THROW_ON_ERROR), true));
     }

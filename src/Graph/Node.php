@@ -8,6 +8,9 @@ use JsonSerializable;
 
 final readonly class Node implements JsonSerializable
 {
+    /**
+     * @param string|null $parent Id of the method a flow node belongs to.
+     */
     public function __construct(
         public string $id,
         public NodeType $type,
@@ -15,6 +18,7 @@ final readonly class Node implements JsonSerializable
         public ?string $file = null,
         public ?int $lineStart = null,
         public ?int $lineEnd = null,
+        public ?string $parent = null,
     ) {}
 
     /** @return array<string, string|int|null> */
@@ -27,6 +31,7 @@ final readonly class Node implements JsonSerializable
             'file' => $this->file,
             'lineStart' => $this->lineStart,
             'lineEnd' => $this->lineEnd,
+            'parent' => $this->parent,
         ];
     }
 }
