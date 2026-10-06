@@ -13,6 +13,7 @@ import { toClassMap } from './graph/toFlow'
 import { isBackward, layoutEdges, toMethodFlow, type FlowNodeData } from './graph/toMethodFlow'
 import type { Graph } from './graph/types'
 import { SAMPLE_CODE, SAMPLE_FILE } from './sample'
+import { DEFAULT_PANEL } from './panel'
 import { clampSplit, DEFAULT_SPLIT, splitFromPointer } from './split'
 
 type View = { kind: 'map' } | { kind: 'flow'; methodId: string }
@@ -246,6 +247,17 @@ function onCursorLine(line: number): void {
   }
 }
 
+const PANEL_KEY = 'ariadne:replay-height'
+const replayHeight = ref(Number(localStorage.getItem(PANEL_KEY) ?? DEFAULT_PANEL) || DEFAULT_PANEL)
+
+function saveReplayHeight(): void {
+  try {
+    localStorage.setItem(PANEL_KEY, String(replayHeight.value))
+  } catch {
+    // The height just won't be remembered.
+  }
+}
+
 const SPLIT_KEY = 'ariadne:split'
 const split = ref(clampSplit(Number(localStorage.getItem(SPLIT_KEY) ?? DEFAULT_SPLIT)))
 const panes = ref<HTMLElement>()
@@ -345,7 +357,9 @@ onMounted(run)
           :path="path"
           :nodes="flowData"
           :choices="choices"
+          v-model:height="replayHeight"
           :at-end="atEnd"
+          @settled="saveReplayHeight"
           @next="takeExit"
           @back="path = stepBack(path)"
           @reset="path = path.slice(0, 1)"

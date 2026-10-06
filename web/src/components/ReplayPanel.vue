@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, CircleCheck, RotateCcw } from 'lucide-vue-ne
 import { computed, nextTick, ref, watch } from 'vue'
 
 import type { Step } from '../graph/replay'
+import { clampPanelHeight, toggledPanelHeight } from '../panel'
 import type { FlowNodeData } from '../graph/toMethodFlow'
 
 export interface ExitChoice {
@@ -16,9 +17,61 @@ const props = defineProps<{
   nodes: Map<string, FlowNodeData>
   choices: ExitChoice[]
   atEnd: boolean
+  height: number
 }>()
 
-const emit = defineEmits<{ next: [edgeId: string]; back: []; reset: []; jump: [index: number] }>()
+const emit = defineEmits<{
+  next: [edgeId: string]
+  back: []
+  reset: []
+  jump: [index: number]
+  'update:height': [height: number]
+  /** The height settled (end of a drag, key press, double-click), so it can be remembered. */
+  settled: []
+}>()
+
+const root = ref<HTMLElement>()
+let dragging = false
+let startY = 0
+let startHeight = 0
+
+/** Room the panel can grow into: its own height plus the graph above it. */
+const available = (): number => root.value?.parentElement?.clientHeight ?? props.height + 400
+
+function startDrag(event: PointerEvent): void {
+  dragging = true
+  startY = event.clientY
+  startHeight = props.height
+  ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
+}
+
+function drag(event: PointerEvent): void {
+  if (dragging) {
+    emit('update:height', clampPanelHeight(startHeight + (startY - event.clientY), available()))
+  }
+}
+
+function endDrag(): void {
+  if (dragging) {
+    dragging = false
+    emit('settled')
+  }
+}
+
+function nudge(event: KeyboardEvent): void {
+  const step = event.key === 'ArrowUp' ? 24 : event.key === 'ArrowDown' ? -24 : 0
+
+  if (step !== 0) {
+    event.preventDefault()
+    emit('update:height', clampPanelHeight(props.height + step, available()))
+    emit('settled')
+  }
+}
+
+function toggle(): void {
+  emit('update:height', toggledPanelHeight(props.height, available()))
+  emit('settled')
+}
 
 const log = ref<HTMLElement>()
 
@@ -41,7 +94,21 @@ watch(
 </script>
 
 <template>
-  <section class="replay" aria-label="Execution replay">
+  <section ref="root" class="replay" aria-label="Execution replay" :style="{ height: `${height}px` }">
+    <div
+      class="replay-grip"
+      role="separator"
+      aria-orientation="horizontal"
+      aria-label="Resize replay panel"
+      title="Drag to resize, double-click to maximize"
+      tabindex="0"
+      @pointerdown="startDrag"
+      @pointermove="drag"
+      @pointerup="endDrag"
+      @pointercancel="endDrag"
+      @keydown="nudge"
+      @dblclick="toggle"
+    />
     <header class="replay-head">
       <strong>Execution replay</strong>
       <span class="count">step {{ path.length }}</span>
@@ -92,11 +159,32 @@ watch(
 
 <style>
 .replay {
+  position: relative;
   display: flex;
+  flex: none;
   flex-direction: column;
-  height: 210px;
   border-top: 1px solid var(--border);
   background: var(--surface);
+}
+
+/* A thicker invisible hit area around the 1px border, so the edge is easy to grab. */
+.replay-grip {
+  position: absolute;
+  top: -4px;
+  right: 0;
+  left: 0;
+  z-index: 3;
+  height: 9px;
+  cursor: row-resize;
+  touch-action: none;
+}
+
+.replay-grip:hover,
+.replay-grip:focus-visible,
+.replay-grip:active {
+  background: var(--accent);
+  outline: none;
+  opacity: 0.8;
 }
 
 .replay-head,
