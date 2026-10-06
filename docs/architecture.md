@@ -39,3 +39,7 @@ A method can be declared below the code that calls it. The visitor records `Pend
 ### ADR-5: Library layout in the repository root
 
 `composer.json`, `src/` and `tests/` live in the root so the repository is a valid Composer package. Docker and `make` are development tooling, not part of the product, so they sit next to the other tool configs. A web UI will get its own directory (`web/`) when it appears.
+
+### ADR-6: Method flow is a subgraph, built from dangling exits
+
+The flow of a method lives in the same graph: flow nodes point to their method through `parent`, and `flow` edges carry a branch `label`. `MethodFlowBuilder` keeps the end of the flow built so far as a list of `FlowExit`s and attaches every new node to all of them, so branches merge without special cases and `return`/`break`/`continue` simply produce an empty list. This keeps the graph a single structure for any consumer, and a UI can show a method's flow by filtering on `parent`. Constructs the builder does not model (`switch`, `match`) degrade to plain steps and are listed in the README instead of being guessed.

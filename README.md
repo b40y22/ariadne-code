@@ -45,11 +45,40 @@ docker compose run --rm php php bin/ariadne analyze path/to/YourClass.php
 | `class`      | A named class                                                        |
 | `method`     | A method declared in a class                                         |
 | `unresolved` | A call target that static analysis cannot map to a known declaration |
+| flow nodes   | `start`, `end`, `call`, `condition`, `loop`, `try`, `catch`, `finally`, `return`, `throw`: the control flow of one method, linked to it through `parent` |
 
-| Edge type  | Meaning                                              |
-|------------|------------------------------------------------------|
-| `contains` | A class declares a method                            |
-| `calls`    | A method calls another; `line` is the call site      |
+| Edge type  | Meaning                                                                  |
+|------------|--------------------------------------------------------------------------|
+| `contains` | A class declares a method                                                |
+| `calls`    | A method calls another; `line` is the call site                          |
+| `flow`     | Execution order inside a method; `label` names the branch taken         |
+
+### Method flow
+
+Every method with a body also gets its control flow: calls in execution order, joined by `flow` edges. Branch edges carry a `label`: `true`/`false` (conditions), `body`/`next`/`exit`/`continue` (loops), `exception`/`throw` (try/catch).
+
+Analyzing [`ShippingService`](tests/fixtures/ShippingService.php) gives, for `ship()`, among others:
+
+```
+start -> condition $items === []
+condition $items === [] -> return return false            [true]
+condition $items === [] -> loop foreach ($items as $item)  [false]
+loop foreach ($items as $item) -> call $this->inStock      [body]
+call $this->inStock -> condition !$this->inStock($item)
+condition !$this->inStock($item) -> loop foreach ...       [true]
+condition !$this->inStock($item) -> try                    [false]
+...
+```
+
+Deliberate simplifications (the graph never claims more than it knows):
+
+- `switch`/`match` are not branched: their calls appear in source order as plain steps.
+- Calls in loop headers (`while ($this->next())`) are not steps, because they run on every iteration.
+- `do ... while` is drawn like `while`, with the condition node before the body.
+- Exceptions raised by called methods are unknown, so a `try` links to each of its `catch` blocks.
+- `finally` is reached on normal completion only (not after `return`/`break` inside `try`).
+- Closures and arrow functions add no steps to the enclosing flow.
+- Code after an unconditional `return`/`throw`/`break`/`continue` is unreachable and left out.
 
 What currently resolves: `$this->method()`, `self::method()` and `static::method()` within the same class, case-insensitively. Everything else (calls on other objects, inherited methods, `parent::`, dynamic names such as `$this->$name()`) becomes an `unresolved` node, so the graph never asserts something the code does not prove.
 
@@ -67,7 +96,8 @@ Requires PHP 8.5. The graph for [`OrderService.php`](tests/fixtures/OrderService
 ## Roadmap
 
 - [x] Classes, methods and method calls to Code Graph JSON
-- [ ] Control flow inside methods: `if`/`else`, loops, `try`/`catch`, `throw`
+- [x] Control flow inside methods: `if`/`else`, loops, `try`/`catch`, `throw`
+- [ ] `switch`/`match` branches, `finally` after early exits
 - [ ] Interfaces, traits, enums, inheritance and dependency edges
 - [ ] Type-aware call resolution (typed properties, constructor promotion, PHPDoc)
 - [ ] Multiple files and project-level graph
