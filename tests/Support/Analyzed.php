@@ -21,6 +21,34 @@ final class Analyzed
     }
 
     /**
+     * One graph for several files, each written as if it started right after the opening tag.
+     *
+     * @param array<string, string> $files path => code
+     */
+    public static function project(array $files): Graph
+    {
+        return new PhpAnalyzer()->analyzeFiles(array_map(static fn(string $code): string => "<?php\n" . $code, $files));
+    }
+
+    /**
+     * The call edges of the graph as "from -> to".
+     *
+     * @return list<string>
+     */
+    public static function calls(Graph $graph): array
+    {
+        $calls = [];
+
+        foreach ($graph->edges() as $edge) {
+            if ($edge->type === EdgeType::Calls) {
+                $calls[] = $edge->from . ' -> ' . $edge->to;
+            }
+        }
+
+        return $calls;
+    }
+
+    /**
      * The flow edges of the graph as "from -> to [label]", in the order the analyzer created them.
      * Start and end print as their type; every other node as "type name".
      *

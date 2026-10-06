@@ -7,7 +7,6 @@ namespace Ariadne\Analyzer;
 use PhpParser\Node\Expr;
 use PhpParser\Node\Stmt\For_;
 use PhpParser\Node\Stmt\Foreach_;
-use PhpParser\PrettyPrinter\Standard;
 
 /**
  * The text shown on flow nodes and edges: short, on one line, and in the style of the source.
@@ -18,11 +17,11 @@ final readonly class FlowLabels
 
     private const int MAX_BRANCH_LABEL = 24;
 
-    private Standard $printer;
+    private SourcePrinter $printer;
 
     public function __construct(private CallSiteReader $reader)
     {
-        $this->printer = new Standard();
+        $this->printer = new SourcePrinter();
     }
 
     /** An expression on one line, cut to fit a node. */

@@ -44,7 +44,7 @@ final class ProceduralTest extends TestCase
     {
         $graph = Analyzed::graph('function a() { return B(); } function b() { return 1; }');
 
-        self::assertSame(['function:a -> function:b'], $this->calls($graph));
+        self::assertSame(['function:a -> function:b'], Analyzed::calls($graph));
     }
 
     #[Test]
@@ -52,7 +52,7 @@ final class ProceduralTest extends TestCase
     {
         $graph = Analyzed::graph('function a() { return array_sum([1]); }');
 
-        self::assertSame(['function:a -> unresolved:array_sum'], $this->calls($graph));
+        self::assertSame(['function:a -> unresolved:array_sum'], Analyzed::calls($graph));
     }
 
     #[Test]
@@ -60,7 +60,7 @@ final class ProceduralTest extends TestCase
     {
         $graph = Analyzed::graph("namespace App;\nfunction a() { return b(); }\nfunction b() { return 1; }");
 
-        self::assertSame(['function:App\\a -> function:App\\b'], $this->calls($graph));
+        self::assertSame(['function:App\\a -> function:App\\b'], Analyzed::calls($graph));
     }
 
     #[Test]
@@ -68,7 +68,7 @@ final class ProceduralTest extends TestCase
     {
         $graph = Analyzed::graph('namespace { function helper() { return 1; } } namespace App { function a() { return helper(); } }');
 
-        self::assertSame(['function:App\\a -> function:helper'], $this->calls($graph));
+        self::assertSame(['function:App\\a -> function:helper'], Analyzed::calls($graph));
     }
 
     #[Test]
@@ -76,7 +76,7 @@ final class ProceduralTest extends TestCase
     {
         $graph = Analyzed::graph("namespace Lib;\nfunction tool() { return 1; }\nnamespace App;\nuse function Lib\\tool;\nfunction a() { return tool(); }");
 
-        self::assertSame(['function:App\\a -> function:Lib\\tool'], $this->calls($graph));
+        self::assertSame(['function:App\\a -> function:Lib\\tool'], Analyzed::calls($graph));
     }
 
     #[Test]
@@ -84,7 +84,7 @@ final class ProceduralTest extends TestCase
     {
         $graph = Analyzed::graph('function a($fn) { return $fn(1); }');
 
-        self::assertSame(['function:a -> unresolved:$fn'], $this->calls($graph));
+        self::assertSame(['function:a -> unresolved:$fn'], Analyzed::calls($graph));
     }
 
     #[Test]
@@ -92,8 +92,8 @@ final class ProceduralTest extends TestCase
     {
         $graph = Analyzed::graph('class A { function m() { return helper(); } } function helper() { return (new A())->m(); }');
 
-        self::assertContains('method:A::m -> function:helper', $this->calls($graph));
-        self::assertContains('function:helper -> unresolved:(new A())->m', $this->calls($graph));
+        self::assertContains('method:A::m -> function:helper', Analyzed::calls($graph));
+        self::assertContains('function:helper -> method:A::m', Analyzed::calls($graph));
     }
 
     #[Test]
@@ -102,7 +102,7 @@ final class ProceduralTest extends TestCase
         $graph = Analyzed::graph("function helper() { return 1; }\n\$x = helper();\necho \$x;");
 
         self::assertSame([['script:test.php', 'test.php', 3, 4]], $this->nodes($graph, NodeType::Script));
-        self::assertSame(['script:test.php -> function:helper'], $this->calls($graph));
+        self::assertSame(['script:test.php -> function:helper'], Analyzed::calls($graph));
     }
 
     #[Test]
@@ -139,7 +139,7 @@ final class ProceduralTest extends TestCase
     {
         $graph = Analyzed::graph("namespace App { function f() {} f(); }");
 
-        self::assertSame(['script:test.php -> function:App\\f'], $this->calls($graph));
+        self::assertSame(['script:test.php -> function:App\\f'], Analyzed::calls($graph));
     }
 
     #[Test]
@@ -148,12 +148,12 @@ final class ProceduralTest extends TestCase
         $graph = Analyzed::graph('class A { public $x = 1; function m() { return strlen("x"); } } interface I { function i(); } trait T { function t() { return strtoupper("x"); } } $o = new class { function a() { return strrev("x"); } };');
 
         $fromScript = array_values(array_filter(
-            $this->calls($graph),
+            Analyzed::calls($graph),
             static fn(string $call) => str_starts_with($call, 'script:'),
         ));
 
         self::assertSame([], $fromScript);
-        self::assertContains('method:A::m -> unresolved:strlen', $this->calls($graph));
+        self::assertContains('method:A::m -> unresolved:strlen', Analyzed::calls($graph));
     }
 
     #[Test]
@@ -161,7 +161,7 @@ final class ProceduralTest extends TestCase
     {
         $graph = Analyzed::graph('$f = function () { return helper(); }; function helper() {}');
 
-        self::assertSame(['script:test.php -> function:helper'], $this->calls($graph));
+        self::assertSame(['script:test.php -> function:helper'], Analyzed::calls($graph));
     }
 
     #[Test]
@@ -169,7 +169,7 @@ final class ProceduralTest extends TestCase
     {
         $graph = Analyzed::graph('if (!function_exists("shim")) { function shim() { return 1; } } shim();');
 
-        self::assertContains('script:test.php -> function:shim', $this->calls($graph));
+        self::assertContains('script:test.php -> function:shim', Analyzed::calls($graph));
     }
 
     #[Test]
@@ -244,22 +244,6 @@ final class ProceduralTest extends TestCase
         }
 
         return $found;
-    }
-
-    /**
-     * @return list<string>
-     */
-    private function calls(Graph $graph): array
-    {
-        $calls = [];
-
-        foreach ($graph->edges() as $edge) {
-            if ($edge->type === EdgeType::Calls) {
-                $calls[] = $edge->from . ' -> ' . $edge->to;
-            }
-        }
-
-        return $calls;
     }
 
     /**

@@ -10,6 +10,8 @@ use Ariadne\Graph\Graph;
 use Ariadne\Graph\Node;
 use Ariadne\Graph\NodeType;
 use PhpParser\Node as AstNode;
+use PhpParser\Node\Expr\ArrowFunction;
+use PhpParser\Node\Expr\Closure;
 use PhpParser\Node\Stmt;
 use PhpParser\Node\Stmt\Class_;
 use PhpParser\Node\Stmt\ClassLike;
@@ -20,6 +22,7 @@ use PhpParser\NodeVisitorAbstract;
 
 /**
  * Collects classes, their methods, functions and the script of a file, and the calls each of them makes.
+ * The calls are only recorded here; {@see CallResolver} resolves them once every file has been read.
  *
  * A call belongs to the innermost place that runs it: a method, a function, or else the script (the code
  * of the file outside every class and function). Closures belong to the place that defines them.
@@ -40,11 +43,12 @@ final class CallGraphVisitor extends NodeVisitorAbstract
 
     private ?string $scriptId = null;
 
-    /** @var array<string, array<string, string>> class => lowercased method name => method node id */
-    private array $methodIndex = [];
-
-    /** @var array<string, string> lowercased function name => function node id */
-    private array $functionIndex = [];
+    /**
+     * The classes of the variables in scope, innermost function or closure last.
+     *
+     * @var list<array<string, string>>
+     */
+    private array $variables = [[]];
 
     /** @var list<PendingCall> */
     private array $pendingCalls = [];
@@ -90,6 +94,8 @@ final class CallGraphVisitor extends NodeVisitorAbstract
             $this->enterMethod($node);
         } elseif ($node instanceof Function_) {
             $this->enterFunction($node);
+        } elseif ($node instanceof Closure || $node instanceof ArrowFunction) {
+            $this->variables[] = VariableTypes::of($node, $this->class, $this->variablesInScope());
         } elseif ($node instanceof ClassLike) {
             $this->enterHidden();
         } else {
@@ -101,6 +107,10 @@ final class CallGraphVisitor extends NodeVisitorAbstract
 
     public function leaveNode(AstNode $node): null
     {
+        if ($node instanceof ClassMethod || $node instanceof Function_ || $node instanceof Closure || $node instanceof ArrowFunction) {
+            array_pop($this->variables);
+        }
+
         if ($node instanceof ClassLike || $node instanceof ClassMethod || $node instanceof Function_) {
             $scope = array_pop($this->scopes);
 
@@ -114,13 +124,10 @@ final class CallGraphVisitor extends NodeVisitorAbstract
         return null;
     }
 
-    public function afterTraverse(array $nodes): null
+    /** @return list<PendingCall> */
+    public function pendingCalls(): array
     {
-        foreach ($this->pendingCalls as $call) {
-            $this->resolve($call);
-        }
-
-        return null;
+        return $this->pendingCalls;
     }
 
     /**
@@ -172,7 +179,7 @@ final class CallGraphVisitor extends NodeVisitorAbstract
         }
 
         $this->graph->addNode(new Node(
-            id: self::classId($this->class),
+            id: NodeIds::class($this->class),
             type: NodeType::Class_,
             name: $this->class,
             file: $this->file,
@@ -192,6 +199,7 @@ final class CallGraphVisitor extends NodeVisitorAbstract
     private function enterMethod(ClassMethod $node): void
     {
         $this->pushScope();
+        $this->variables[] = VariableTypes::of($node, $this->class);
 
         if ($this->class === null) {
             $this->method = null;
@@ -199,7 +207,7 @@ final class CallGraphVisitor extends NodeVisitorAbstract
             return;
         }
 
-        $id = self::methodId($this->class, $node->name->toString());
+        $id = NodeIds::method($this->class, $node->name->toString());
 
         $this->graph->addNode(new Node(
             id: $id,
@@ -209,11 +217,10 @@ final class CallGraphVisitor extends NodeVisitorAbstract
             lineStart: $node->getStartLine(),
             lineEnd: $node->getEndLine(),
         ));
-        $this->graph->addEdge(new Edge(self::classId($this->class), $id, EdgeType::Contains));
+        $this->graph->addEdge(new Edge(NodeIds::class($this->class), $id, EdgeType::Contains));
 
         new MethodFlowBuilder($this->graph, $this->reader, $this->file, $id)->build($node);
 
-        $this->methodIndex[$this->class][$node->name->toLowerString()] = $id;
         $this->method = $id;
     }
 
@@ -222,7 +229,8 @@ final class CallGraphVisitor extends NodeVisitorAbstract
         $this->pushScope();
 
         $name = $node->namespacedName?->toString() ?? $node->name->toString();
-        $id = self::functionId($name);
+        $id = NodeIds::function($name);
+        $this->variables[] = VariableTypes::of($node, null);
 
         $this->graph->addNode(new Node(
             id: $id,
@@ -235,10 +243,15 @@ final class CallGraphVisitor extends NodeVisitorAbstract
 
         new MethodFlowBuilder($this->graph, $this->reader, $this->file, $id)->build($node);
 
-        $this->functionIndex[strtolower($name)] = $id;
         $this->class = null;
         $this->method = $id;
         $this->hidden = false;
+    }
+
+    /** @return array<string, string> */
+    private function variablesInScope(): array
+    {
+        return $this->variables[count($this->variables) - 1] ?? [];
     }
 
     private function pushScope(): void
@@ -270,49 +283,22 @@ final class CallGraphVisitor extends NodeVisitorAbstract
             return;
         }
 
+        $receiver = $site->receiver;
+
+        // A variable whose class is known is as good as the class named in the code.
+        if ($receiver?->kind === ReceiverKind::Variable && $receiver->name !== null) {
+            $type = $this->variablesInScope()[$receiver->name] ?? null;
+            $receiver = $type === null ? $receiver : new Receiver(ReceiverKind::ClassName, $type);
+        }
+
         $this->pendingCalls[] = new PendingCall(
             fromMethodId: $owner,
             class: $this->class ?? '',
-            localMethod: $site->localMethod,
-            label: $site->label,
+            receiver: $receiver,
+            method: $site->method,
+            label: $site->qualifiedLabel,
             line: $site->line,
             functions: $site->functions,
         );
-    }
-
-    private function resolve(PendingCall $call): void
-    {
-        $targetId = $call->localMethod !== null
-            ? ($this->methodIndex[$call->class][$call->localMethod] ?? null)
-            : null;
-
-        foreach ($call->functions as $name) {
-            $targetId ??= $this->functionIndex[$name] ?? null;
-        }
-
-        if ($targetId === null) {
-            $targetId = 'unresolved:' . $call->label;
-
-            if (!$this->graph->hasNode($targetId)) {
-                $this->graph->addNode(new Node($targetId, NodeType::Unresolved, $call->label));
-            }
-        }
-
-        $this->graph->addEdge(new Edge($call->fromMethodId, $targetId, EdgeType::Calls, $call->line));
-    }
-
-    private static function classId(string $class): string
-    {
-        return 'class:' . $class;
-    }
-
-    private static function methodId(string $class, string $method): string
-    {
-        return 'method:' . $class . '::' . $method;
-    }
-
-    private static function functionId(string $function): string
-    {
-        return 'function:' . $function;
     }
 }

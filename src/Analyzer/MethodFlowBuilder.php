@@ -235,7 +235,7 @@ final class MethodFlowBuilder
         $thrown = $hasCatches ? array_pop($this->tries) : [];
 
         foreach ($stmt->catches as $catch) {
-            $types = implode('|', array_map(static fn($type) => $type->toString(), $catch->types));
+            $types = implode('|', array_map(static fn($type) => SourcePrinter::written($type)->toString(), $catch->types));
             $variable = $catch->var !== null ? ' ' . $this->labels->text($catch->var) : '';
 
             $node = $this->add(NodeType::Catch_, 'catch (' . $types . $variable . ')', $catch);

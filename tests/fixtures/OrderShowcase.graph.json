@@ -1187,15 +1187,6 @@
             "lineStart": null,
             "lineEnd": null,
             "parent": null
-        },
-        {
-            "id": "unresolved:(new OrderService(new OrderRepository()))->createOrder",
-            "type": "unresolved",
-            "name": "(new OrderService(new OrderRepository()))->createOrder",
-            "file": null,
-            "lineStart": null,
-            "lineEnd": null,
-            "parent": null
         }
     ],
     "edges": [
@@ -2153,7 +2144,7 @@
         },
         {
             "from": "script:OrderShowcase.php",
-            "to": "unresolved:(new OrderService(new OrderRepository()))->createOrder",
+            "to": "method:App\\OrderService::createOrder",
             "type": "calls",
             "line": 137,
             "label": null

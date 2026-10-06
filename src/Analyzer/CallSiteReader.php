@@ -15,43 +15,42 @@ use PhpParser\Node\Expr\FuncCall;
 use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\New_;
 use PhpParser\Node\Expr\NullsafeMethodCall;
+use PhpParser\Node\Expr\PropertyFetch;
 use PhpParser\Node\Expr\StaticCall;
 use PhpParser\Node\Expr\Ternary;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Identifier;
 use PhpParser\Node\Name;
 use PhpParser\Node\Name\FullyQualified;
-use PhpParser\PrettyPrinter\Standard;
+use PhpParser\Node\Stmt\Class_;
 
 /**
  * Recognizes the calls the analyzer tracks: method calls and static calls.
  */
 final readonly class CallSiteReader
 {
-    private Standard $printer;
+    private SourcePrinter $printer;
 
     public function __construct()
     {
-        $this->printer = new Standard();
+        $this->printer = new SourcePrinter();
     }
 
     public function read(AstNode $node): ?CallSite
     {
+        $qualified = null;
+
         if ($node instanceof MethodCall || $node instanceof NullsafeMethodCall) {
-            $isLocal = $node instanceof MethodCall
-                && $node->var instanceof Variable
-                && $node->var->name === 'this';
+            $receiver = self::objectReceiver($node->var);
             $operator = $node instanceof NullsafeMethodCall ? '?->' : '->';
             $label = $this->receiver($node->var) . $operator . $this->printName($node->name);
         } elseif ($node instanceof StaticCall) {
-            $isLocal = $node->class instanceof Name
-                && in_array($node->class->toLowerString(), ['self', 'static'], true);
-            $target = $node->class instanceof Name
-                ? $node->class->toString()
-                : $this->printer->prettyPrintExpr($node->class);
-            $label = $target . '::' . $this->printName($node->name);
+            $receiver = self::classReceiver($node->class);
+            $method = '::' . $this->printName($node->name);
+            $label = ($node->class instanceof Name ? SourcePrinter::written($node->class)->toString() : $this->printer->prettyPrintExpr($node->class)) . $method;
+            $qualified = $node->class instanceof Name ? $node->class->toString() . $method : $label;
         } elseif ($node instanceof FuncCall) {
-            $isLocal = false;
+            $receiver = null;
             $label = $node->name instanceof Name ? $node->name->toString() : $this->printer->prettyPrintExpr($node->name);
         } else {
             return null;
@@ -61,11 +60,45 @@ final readonly class CallSiteReader
 
         return new CallSite(
             label: $label,
-            localMethod: $node instanceof FuncCall ? null : ($isLocal && $node->name instanceof Identifier ? $node->name->toLowerString() : null),
+            qualifiedLabel: $qualified ?? $label,
+            receiver: $receiver,
+            method: !$node instanceof FuncCall && $node->name instanceof Identifier ? $node->name->toLowerString() : null,
             line: $node->getStartLine(),
             functions: $functions,
             quiet: $functions !== [] && QuietFunctions::contains($functions[array_key_last($functions)]),
         );
+    }
+
+    private static function objectReceiver(Expr $var): Receiver
+    {
+        if ($var instanceof Variable && is_string($var->name)) {
+            return $var->name === 'this'
+                ? new Receiver(ReceiverKind::This)
+                : new Receiver(ReceiverKind::Variable, $var->name);
+        }
+
+        if ($var instanceof PropertyFetch && $var->var instanceof Variable && $var->var->name === 'this' && $var->name instanceof Identifier) {
+            return new Receiver(ReceiverKind::Property, $var->name->toString());
+        }
+
+        if ($var instanceof New_ && $var->class instanceof Name) {
+            return self::classReceiver($var->class);
+        }
+
+        return new Receiver(ReceiverKind::Other);
+    }
+
+    private static function classReceiver(Name|Expr|Class_ $class): Receiver
+    {
+        if (!$class instanceof Name) {
+            return new Receiver(ReceiverKind::Other);
+        }
+
+        return match ($class->toLowerString()) {
+            'self', 'static' => new Receiver(ReceiverKind::Self_),
+            'parent' => new Receiver(ReceiverKind::Parent_),
+            default => new Receiver(ReceiverKind::ClassName, $class->toString()),
+        };
     }
 
     /**
