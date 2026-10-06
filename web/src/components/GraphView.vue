@@ -3,7 +3,8 @@ import { Background } from '@vue-flow/background'
 import { VueFlow, useVueFlow, type Edge, type Node } from '@vue-flow/core'
 import { shallowRef, watch } from 'vue'
 
-import { readableViewport } from '../graph/viewport'
+import { nodeClass } from '../graph/classes'
+import { isInView, readableViewport } from '../graph/viewport'
 import { applyPositions, clearPositions, layoutKey, loadPositions, savePositions } from '../graph/positions'
 import { theme } from '../theme'
 import ClassGroup from './ClassGroup.vue'
@@ -18,47 +19,69 @@ const props = defineProps<{
   nodes: Node[]
   edges: Edge[]
   selectedId: string | null
+  /** Nodes already passed by a replay. */
+  visited?: ReadonlySet<string>
   fileName: string
   mode: 'map' | 'flow'
 }>()
 const emit = defineEmits<{ select: [id: string]; open: [id: string] }>()
 
-const { fitView, setViewport, dimensions, getNodes, updateNode, onNodeClick, onNodeDoubleClick, onNodeDragStop, onNodesChange, onNodesInitialized } = useVueFlow()
+const { fitView, setViewport, setCenter, viewport, dimensions, findNode, getNodes, updateNode, onNodeClick, onNodeDoubleClick, onNodeDragStop, onNodesChange, onNodesInitialized } = useVueFlow()
 
 // Vue Flow owns the node positions from here on. Props only deliver a freshly analyzed graph;
 // selection and dragging must never rebuild nodes from them, or dragged blocks jump back.
 const model = shallowRef<Node[]>([])
-const baseClass = new Map<string, string | undefined>()
-let highlighted: string | null = null
+const baseClass = new Map<string, string>()
+const applied = new Map<string, string>()
 let pendingFit = false
 
 const plainClass = (node: Node): string => (typeof node.class === 'string' ? node.class : '')
+
+const classFor = (id: string): string =>
+  nodeClass(baseClass.get(id) ?? '', { selected: props.selectedId === id, visited: props.visited?.has(id) ?? false })
 
 watch(
   () => props.nodes,
   (nodes) => {
     baseClass.clear()
+    applied.clear()
     nodes.forEach((node) => baseClass.set(node.id, plainClass(node)))
-    highlighted = null
     pendingFit = true
-    model.value = applyPositions(nodes, loadPositions(localStorage, layoutKey(props.fileName)))
+    model.value = applyPositions(nodes, loadPositions(localStorage, layoutKey(props.fileName))).map((node) => ({ ...node, class: classFor(node.id) }))
+    nodes.forEach((node) => applied.set(node.id, classFor(node.id)))
   },
   { immediate: true },
 )
 
-// Selection is a class change on the existing node, applied in place.
+// Selection and visited state are class changes on the existing nodes, applied in place, so dragged positions stay.
+watch(
+  () => [props.selectedId, props.visited] as const,
+  () => {
+    for (const id of baseClass.keys()) {
+      const next = classFor(id)
+
+      if (applied.get(id) !== next) {
+        applied.set(id, next)
+        updateNode(id, { class: next })
+      }
+    }
+  },
+)
+
+// Keep the selected block on screen: a replay (or the code cursor) can select one far outside the view.
 watch(
   () => props.selectedId,
   (id) => {
-    if (highlighted !== null) {
-      updateNode(highlighted, { class: baseClass.get(highlighted) ?? '' })
+    const node = id === null ? undefined : findNode(id)
+
+    if (node === undefined || !node.dimensions.width) {
+      return
     }
 
-    if (id !== null && baseClass.has(id)) {
-      updateNode(id, { class: `${baseClass.get(id) ?? ''} is-selected` })
-      highlighted = id
-    } else {
-      highlighted = null
+    const rect = { x: node.position.x, y: node.position.y, width: node.dimensions.width, height: node.dimensions.height }
+
+    if (!isInView(rect, viewport.value, dimensions.value)) {
+      void setCenter(rect.x + rect.width / 2, rect.y + rect.height / 2, { zoom: viewport.value.zoom, duration: 350 })
     }
   },
 )
@@ -109,11 +132,8 @@ onNodesInitialized(() => {
 /** Forgets the saved layout and returns to the automatic one. */
 function resetLayout(): void {
   clearPositions(localStorage, layoutKey(props.fileName))
-  const selected = highlighted
-  highlighted = null
   pendingFit = true
-  model.value = props.nodes.map((node) => (node.id === selected ? { ...node, class: `${plainClass(node)} is-selected` } : node))
-  highlighted = selected
+  model.value = props.nodes.map((node) => ({ ...node, class: classFor(node.id) }))
 }
 
 defineExpose({ resetLayout })
@@ -169,6 +189,13 @@ defineExpose({ resetLayout })
 .flow-edge-primary .vue-flow__edge-path {
   stroke: var(--accent);
   filter: drop-shadow(0 0 3px rgba(var(--accent-rgb), 0.45));
+}
+
+.flow-edge.is-walked .vue-flow__edge-path {
+  stroke: var(--accent);
+  stroke-width: 2.5;
+  stroke-dasharray: none;
+  filter: drop-shadow(0 0 4px rgba(var(--accent-rgb), 0.6));
 }
 
 .flow-edge-backward .vue-flow__edge-path {

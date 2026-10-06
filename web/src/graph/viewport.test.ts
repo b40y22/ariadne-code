@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { readableViewport } from './viewport'
+import { isInView, readableViewport } from './viewport'
 
 const options = { padding: 20, minZoom: 0.8, maxZoom: 1.25 }
 const pane = { width: 800, height: 600 }
@@ -40,5 +40,29 @@ describe('readableViewport', () => {
     const view = readableViewport({ minX: 0, minY: 0, maxX: 100, maxY: 100 }, { width: 0, height: 0 }, options)
 
     expect(Number.isFinite(view.x) && Number.isFinite(view.y) && Number.isFinite(view.zoom)).toBe(true)
+  })
+})
+
+describe('isInView', () => {
+  const view = { x: 0, y: 0, zoom: 1 }
+  const box = { width: 100, height: 50 }
+
+  it('accepts a rectangle well inside the pane', () => {
+    expect(isInView({ x: 200, y: 200, ...box }, view, pane)).toBe(true)
+  })
+
+  it('rejects one below the visible area', () => {
+    expect(isInView({ x: 200, y: 900, ...box }, view, pane)).toBe(false)
+  })
+
+  it('rejects one that touches the edge, inside the margin', () => {
+    expect(isInView({ x: 10, y: 200, ...box }, view, pane)).toBe(false)
+    expect(isInView({ x: 200, y: 560, ...box }, view, pane)).toBe(false)
+  })
+
+  it('accounts for pan and zoom', () => {
+    // At zoom 2 and panned up by 500px, graph y=300 lands at screen y=100.
+    expect(isInView({ x: 100, y: 300, ...box }, { x: 0, y: -500, zoom: 2 }, pane)).toBe(true)
+    expect(isInView({ x: 100, y: 300, ...box }, { x: 0, y: 0, zoom: 2 }, pane)).toBe(false)
   })
 })

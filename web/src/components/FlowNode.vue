@@ -141,6 +141,10 @@ const icon = computed(() => ICONS[props.data.kind])
   color: var(--accent);
 }
 
+.vue-flow__node.is-visited .flow-node {
+  border-color: rgba(var(--accent-rgb), 0.45);
+}
+
 .vue-flow__node.is-selected .flow-node {
   border-color: var(--accent);
   box-shadow:

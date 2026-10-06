@@ -1,14 +1,16 @@
 <script setup lang="ts">
 import type { Edge, Node } from '@vue-flow/core'
-import { computed, onMounted, ref, shallowRef } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 
 import { AnalyzeError, analyze } from './api'
 import CodeEditor, { type Highlight } from './components/CodeEditor.vue'
 import GraphView from './components/GraphView.vue'
+import ReplayPanel, { type ExitChoice } from './components/ReplayPanel.vue'
 import { layout } from './graph/layout'
 import { nodeAtLine } from './graph/lookup'
+import { advance, current, exits, jumpTo, primaryExit, startReplay, stepBack, visitedNodes, walkedEdges, type Step } from './graph/replay'
 import { toClassMap } from './graph/toFlow'
-import { layoutEdges, toMethodFlow } from './graph/toMethodFlow'
+import { isBackward, layoutEdges, toMethodFlow, type FlowNodeData } from './graph/toMethodFlow'
 import type { Graph } from './graph/types'
 import { SAMPLE_CODE, SAMPLE_FILE } from './sample'
 import { clampSplit, DEFAULT_SPLIT, splitFromPointer } from './split'
@@ -27,6 +29,79 @@ const selected = ref<{ id: string; reveal: boolean } | null>(null)
 const error = ref<string | null>(null)
 const loading = ref(false)
 const graphView = ref<InstanceType<typeof GraphView>>()
+
+// --- Execution replay: a walk through the method flow, one step at a time.
+const path = ref<Step[]>([])
+const flowData = computed(() => new Map(nodes.value.map((node) => [node.id, node.data as FlowNodeData])))
+const walked = computed(() => walkedEdges(path.value))
+const visited = computed<ReadonlySet<string>>(() => (view.value.kind === 'flow' ? visitedNodes(path.value) : new Set<string>()))
+
+const shownEdges = computed<Edge[]>(() =>
+  walked.value.size === 0 ? edges.value : edges.value.map((edge) => (walked.value.has(edge.id) ? { ...edge, class: `${String(edge.class ?? '')} is-walked` } : edge)),
+)
+
+const backward = (edge: Edge): boolean => isBackward(edge.source, edge.target)
+
+/** The ways out of the current step, the one that "next" would take first. */
+const choices = computed<ExitChoice[]>(() => {
+  const here = current(path.value)
+  const options = here === undefined ? [] : exits(edges.value, here.nodeId)
+  const first = primaryExit(options, backward)
+  const ordered = first === undefined ? options : [first, ...options.filter((edge) => edge !== first)]
+
+  return ordered.map((edge) => ({
+    edgeId: edge.id,
+    label: edge.label === undefined ? null : String(edge.label),
+    targetTitle: flowData.value.get(edge.target)?.title ?? edge.target,
+  }))
+})
+
+const atEnd = computed(() => flowData.value.get(current(path.value)?.nodeId ?? '')?.kind === 'end')
+
+function takeExit(edgeId: string): void {
+  const edge = edges.value.find((candidate) => candidate.id === edgeId)
+
+  if (edge !== undefined) {
+    path.value = advance(path.value, edge)
+  }
+}
+
+function stepNext(): void {
+  const first = choices.value[0]
+
+  if (first !== undefined) {
+    takeExit(first.edgeId)
+  }
+}
+
+// The replay drives the selection: the current step is highlighted in the graph and in the code.
+watch(path, (steps) => {
+  const here = current(steps)
+
+  if (view.value.kind === 'flow' && here !== undefined) {
+    selected.value = { id: here.nodeId, reveal: true }
+  }
+})
+
+function onKey(event: KeyboardEvent): void {
+  // Arrow keys belong to the editor and to the pane divider when they have the focus.
+  const inControl = event.target instanceof Element && event.target.closest('.monaco-editor, [role="separator"], input, textarea') !== null
+
+  if (view.value.kind !== 'flow' || inControl || event.altKey || event.ctrlKey || event.metaKey) {
+    return
+  }
+
+  if (event.key === 'ArrowRight') {
+    event.preventDefault()
+    stepNext()
+  } else if (event.key === 'ArrowLeft') {
+    event.preventDefault()
+    path.value = stepBack(path.value)
+  }
+}
+
+onMounted(() => window.addEventListener('keydown', onKey))
+onBeforeUnmount(() => window.removeEventListener('keydown', onKey))
 
 const flowMethodId = computed(() => (view.value.kind === 'flow' ? view.value.methodId : undefined))
 
@@ -91,7 +166,10 @@ async function show(result: Graph, next: View): Promise<boolean> {
 
     nodes.value = await layout(flow.nodes, layoutEdges(flow.edges), { direction: 'DOWN' })
     edges.value = flow.edges
+    const entry = flow.nodes.find((node) => node.data.kind === 'start')
+    path.value = entry === undefined ? [] : startReplay(entry.id)
   } else {
+    path.value = []
     const map = toClassMap(result)
 
     nodes.value = await layout(map.nodes, map.edges)
@@ -248,16 +326,30 @@ onMounted(run)
     </header>
 
     <main ref="panes" class="panes" :style="{ gridTemplateColumns: `${split}% 6px minmax(0, 1fr)` }">
-      <section class="pane">
-        <GraphView
-          ref="graphView"
-          :nodes="nodes"
-          :edges="edges"
-          :selected-id="selected?.id ?? null"
-          :file-name="layoutId"
-          :mode="view.kind"
-          @select="onGraphSelect"
-          @open="openFlow"
+      <section class="pane graph-pane">
+        <div class="graph-slot">
+          <GraphView
+            ref="graphView"
+            :nodes="nodes"
+            :edges="shownEdges"
+            :selected-id="selected?.id ?? null"
+            :visited="visited"
+            :file-name="layoutId"
+            :mode="view.kind"
+            @select="onGraphSelect"
+            @open="openFlow"
+          />
+        </div>
+        <ReplayPanel
+          v-if="view.kind === 'flow' && path.length > 0"
+          :path="path"
+          :nodes="flowData"
+          :choices="choices"
+          :at-end="atEnd"
+          @next="takeExit"
+          @back="path = stepBack(path)"
+          @reset="path = path.slice(0, 1)"
+          @jump="(index: number) => (path = jumpTo(path, index))"
         />
       </section>
       <div
@@ -377,6 +469,16 @@ onMounted(run)
   min-width: 0;
   min-height: 0;
   height: 100%;
+}
+
+.graph-pane {
+  display: flex;
+  flex-direction: column;
+}
+
+.graph-slot {
+  flex: 1;
+  min-height: 0;
 }
 
 .divider {

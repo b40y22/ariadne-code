@@ -39,3 +39,23 @@ export function readableViewport(bounds: Bounds, pane: { width: number; height: 
     y: height * zoom <= available.height ? (pane.height - height * zoom) / 2 - bounds.minY * zoom : options.padding - bounds.minY * zoom,
   }
 }
+
+export interface Rect {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+/** Whether a graph-space rectangle is fully visible in the pane, keeping `margin` pixels clear of its edges. */
+export function isInView(rect: Rect, viewport: Viewport, pane: { width: number; height: number }, margin = 60): boolean {
+  const left = rect.x * viewport.zoom + viewport.x
+  const top = rect.y * viewport.zoom + viewport.y
+
+  return (
+    left >= margin &&
+    top >= margin &&
+    left + rect.width * viewport.zoom <= pane.width - margin &&
+    top + rect.height * viewport.zoom <= pane.height - margin
+  )
+}
