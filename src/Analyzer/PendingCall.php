@@ -12,11 +12,11 @@ final readonly class PendingCall
     /**
      * @param string $class The class whose code makes the call; empty outside a class.
      * @param Receiver|null $receiver What a method or static call is made on; null for a function call.
-     *                                A variable whose class is known is already a `ClassName` base here.
      * @param string|null $method Method name as written, when it is written literally.
      * @param string $label Human-readable callee, used when the call stays unresolved.
      * @param list<string> $functions Lowercased names a function call may refer to, most specific first.
      * @param string|null $stepId The flow step of this call, when it is one.
+     * @param VariableScope|null $scope The variables the call can see, for a receiver that starts at one.
      */
     public function __construct(
         public string $fromMethodId,
@@ -27,5 +27,6 @@ final readonly class PendingCall
         public int $line,
         public array $functions = [],
         public ?string $stepId = null,
+        public ?VariableScope $scope = null,
     ) {}
 }

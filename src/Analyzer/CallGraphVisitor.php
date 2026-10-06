@@ -44,11 +44,11 @@ final class CallGraphVisitor extends NodeVisitorAbstract
     private ?string $scriptId = null;
 
     /**
-     * The classes of the variables in scope, innermost function or closure last.
+     * The variable scopes, innermost function or closure last; the first is the script's.
      *
-     * @var list<array<string, string>>
+     * @var list<VariableScope>
      */
-    private array $variables = [[]];
+    private array $variables;
 
     /** @var list<PendingCall> */
     private array $pendingCalls = [];
@@ -58,11 +58,13 @@ final class CallGraphVisitor extends NodeVisitorAbstract
     public function __construct(private readonly Graph $graph, private readonly string $file)
     {
         $this->reader = new CallSiteReader();
+        $this->variables = [new VariableScope(null, [])];
     }
 
     public function beforeTraverse(array $nodes): null
     {
         $statements = self::scriptStatements($nodes);
+        $this->variables = [VariableTypes::ofScript($statements)];
 
         if ($statements === []) {
             return null;
@@ -95,7 +97,7 @@ final class CallGraphVisitor extends NodeVisitorAbstract
         } elseif ($node instanceof Function_) {
             $this->enterFunction($node);
         } elseif ($node instanceof Closure || $node instanceof ArrowFunction) {
-            $this->variables[] = VariableTypes::of($node, $this->class, $this->variablesInScope());
+            $this->variables[] = VariableTypes::of($node, $this->class, $this->scope());
         } elseif ($node instanceof ClassLike) {
             $this->enterHidden();
         } else {
@@ -248,10 +250,9 @@ final class CallGraphVisitor extends NodeVisitorAbstract
         $this->hidden = false;
     }
 
-    /** @return array<string, string> */
-    private function variablesInScope(): array
+    private function scope(): VariableScope
     {
-        return $this->variables[count($this->variables) - 1] ?? [];
+        return $this->variables[count($this->variables) - 1] ?? new VariableScope(null, []);
     }
 
     private function pushScope(): void
@@ -283,23 +284,16 @@ final class CallGraphVisitor extends NodeVisitorAbstract
             return;
         }
 
-        $receiver = $site->receiver;
-
-        // A variable whose class is known is as good as the class named in the code.
-        if ($receiver?->kind === ReceiverKind::Variable && $receiver->name !== null) {
-            $type = $this->variablesInScope()[$receiver->name] ?? null;
-            $receiver = $type === null ? $receiver : new Receiver(ReceiverKind::ClassName, $type, $receiver->path);
-        }
-
         $this->pendingCalls[] = new PendingCall(
             fromMethodId: $owner,
             class: $this->class ?? '',
-            receiver: $receiver,
+            receiver: $site->receiver,
             method: $site->method,
             label: $site->qualifiedLabel,
             line: $site->line,
             functions: $site->functions,
             stepId: is_string($step = $node->getAttribute(MethodFlowBuilder::STEP_ATTRIBUTE)) ? $step : null,
+            scope: $this->scope(),
         );
     }
 }

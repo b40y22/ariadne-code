@@ -106,26 +106,71 @@ final readonly class CallResolver
         return $id;
     }
 
-    /** The class whose methods the call can reach, when the receiver tells: the base, then each property read. */
+    /** The class whose methods the call can reach, when the receiver tells. */
     private function receiverClass(PendingCall $call): ?string
     {
-        $receiver = $call->receiver;
-        $own = $call->class === '' ? null : $call->class;
+        return $call->receiver === null ? null : $this->classOf($call->receiver, $call->class === '' ? null : $call->class, $call->scope);
+    }
 
-        $class = match ($receiver?->kind) {
+    /**
+     * The class of what a receiver names: the base, then for each step the class of the property read or the
+     * return type of the method called.
+     */
+    private function classOf(Receiver $receiver, ?string $own, ?VariableScope $scope): ?string
+    {
+        $class = match ($receiver->kind) {
             ReceiverKind::This, ReceiverKind::Self_ => $own,
             ReceiverKind::Parent_ => $own === null ? null : $this->index->class($own)?->parent,
             ReceiverKind::ClassName => $receiver->name,
-            default => null,
+            ReceiverKind::Variable => $scope === null || $receiver->name === null ? null : $this->variableClass($receiver->name, $scope),
+            ReceiverKind::Other => null,
         };
 
-        foreach ($receiver->path ?? [] as $property) {
+        foreach ($receiver->path as $step) {
             if ($class === null) {
                 return null;
             }
 
-            $class = $this->index->propertyType($class, $property);
+            $class = str_ends_with($step, '()')
+                ? $this->index->returnType($class, substr($step, 0, -2))
+                : $this->index->propertyType($class, $step);
         }
+
+        return $class;
+    }
+
+    /**
+     * The class of a variable: the class every value it is given agrees on, or null. A variable that is given
+     * itself on the way (`$node = $node->next()`) has none, since the chain has no first value to start from.
+     */
+    public function variableClass(string $name, VariableScope $scope): ?string
+    {
+        if (isset($scope->resolved[$name])) {
+            return $scope->resolved[$name] === false ? null : $scope->resolved[$name];
+        }
+
+        // Marks the variable as being worked out, so a cycle ends here with no class.
+        $scope->resolved[$name] = false;
+
+        $writes = $scope->writes[$name] ?? [];
+
+        if ($scope->inheritsAll && $scope->parent !== null) {
+            $writes[] = VariableScope::INHERITED;
+        }
+
+        $classes = [];
+
+        foreach ($writes as $write) {
+            $classes[] = match (true) {
+                $write === VariableScope::INHERITED => $scope->parent === null ? null : $this->variableClass($name, $scope->parent),
+                $write instanceof Receiver => $this->classOf($write, $scope->class, $scope),
+                default => null,
+            };
+        }
+
+        $unique = array_values(array_unique($classes));
+        $class = count($unique) === 1 && $unique[0] !== null ? ltrim($unique[0], '\\') : null;
+        $scope->resolved[$name] = $class ?? false;
 
         return $class;
     }

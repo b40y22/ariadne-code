@@ -52,6 +52,28 @@ final class ProjectIndex
     }
 
     /**
+     * The class a method returns when called on an object of the given class, looked up through its parents
+     * the way the method itself would be. Null when the method has no known return type, or is not found.
+     */
+    public function returnType(string $class, string $method): ?string
+    {
+        $method = strtolower($method);
+
+        foreach ($this->lineage($class) as $info) {
+            if (isset($info->returns[$method])) {
+                return $info->returns[$method] === ClassInfo::RETURNS_STATIC ? ltrim($class, '\\') : $info->returns[$method];
+            }
+
+            // Declared here without a type that names a class, or possibly coming from somewhere not followed.
+            if (isset($info->methods[$method]) || $info->open || !$info->isClass) {
+                return null;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * The class and its parents, as far as they are among the analyzed files. Stops at a cycle.
      *
      * @return iterable<ClassInfo>

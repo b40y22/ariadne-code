@@ -70,13 +70,28 @@ final readonly class CallSiteReader
         );
     }
 
-    private static function objectReceiver(Expr $var): Receiver
+    /** What an expression is, as the object of a method call: also what a variable assigned it holds. */
+    public static function objectReceiver(Expr $var): Receiver
     {
         $path = [];
 
-        while (($var instanceof PropertyFetch || $var instanceof NullsafePropertyFetch) && $var->name instanceof Identifier) {
-            array_unshift($path, $var->name->toString());
-            $var = $var->var;
+        while (true) {
+            if (($var instanceof PropertyFetch || $var instanceof NullsafePropertyFetch) && $var->name instanceof Identifier) {
+                array_unshift($path, $var->name->toString());
+                $var = $var->var;
+            } elseif (($var instanceof MethodCall || $var instanceof NullsafeMethodCall) && $var->name instanceof Identifier) {
+                array_unshift($path, $var->name->toString() . '()');
+                $var = $var->var;
+            } else {
+                break;
+            }
+        }
+
+        // `Order::query()->get()`: the chain starts with a static call on a class.
+        if ($var instanceof StaticCall && $var->name instanceof Identifier) {
+            $base = self::classReceiver($var->class);
+
+            return $base->kind === ReceiverKind::Other ? $base : new Receiver($base->kind, $base->name, [$var->name->toString() . '()', ...$path]);
         }
 
         $base = match (true) {

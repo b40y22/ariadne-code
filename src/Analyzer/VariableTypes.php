@@ -13,138 +13,185 @@ use PhpParser\Node\Expr\AssignRef;
 use PhpParser\Node\Expr\Closure;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\FunctionLike;
-use PhpParser\Node\Param;
 use PhpParser\Node\Stmt\Catch_;
+use PhpParser\Node\Stmt\ClassLike;
 use PhpParser\Node\Stmt\Foreach_;
+use PhpParser\Node\Stmt\Function_;
 use PhpParser\Node\Stmt\Global_;
 use PhpParser\Node\Stmt\Static_;
 
 /**
- * The classes of the variables a method, function or closure can call methods on: its parameters declared with
- * a class type and never written to in its body. One assignment anywhere in the body, even in a branch that may
- * not run, and the variable is dropped: a type that holds only sometimes would draw edges that are sometimes wrong.
+ * Builds the {@see VariableScope} of a method, function, closure or script: every value each variable is given.
+ *
+ * Every way a variable gets a value is a write: being a parameter, an assignment, a `foreach`, a `catch`, a
+ * `global` or `static` declaration, a by-reference capture. A write that can name a class is kept as a
+ * {@see Receiver}: a typed parameter, `new Foo()`, `catch (FooException $e)`, or a chain such as
+ * `$this->repo->find($id)` or `$other` whose class the resolver works out later. Anything else is null.
+ * A variable has a class only when every one of its writes gives that same class: one write of anything else,
+ * even in a branch that may not run, and it has none, since a type that holds only sometimes would draw edges
+ * that are sometimes wrong.
+ *
+ * A closure or arrow function starts from the variables it can see (captured with `use`, or all of the
+ * enclosing code for an arrow function) and its own parameters. Writes inside a nested closure do not touch
+ * the enclosing code, unless the closure captures the variable by reference.
  */
 final class VariableTypes
 {
     /**
-     * @param array<string, string> $outer The variables of the enclosing code, for a closure or arrow function.
-     *
-     * @return array<string, string> variable name => fully qualified class
+     * @param VariableScope|null $parent The scope of the enclosing code, for a closure or arrow function.
      */
-    public static function of(FunctionLike $function, ?string $class, array $outer = []): array
+    public static function of(FunctionLike $function, ?string $class, ?VariableScope $parent = null): VariableScope
     {
-        $types = match (true) {
-            $function instanceof ArrowFunction => $outer,
-            $function instanceof Closure => self::captured($function, $outer),
-            default => [],
-        };
+        /** @var array<string, list<Receiver|VariableScope::INHERITED|null>> $writes */
+        $writes = [];
+
+        if ($function instanceof Closure) {
+            foreach ($function->uses as $use) {
+                if (!$use->byRef && is_string($use->var->name)) {
+                    $writes[$use->var->name][] = VariableScope::INHERITED;
+                }
+            }
+        }
 
         foreach ($function->getParams() as $param) {
-            if (!$param->var instanceof Variable || !is_string($param->var->name)) {
-                continue;
-            }
-
-            $type = $param->variadic ? null : self::paramType($param, $class);
-
-            if ($type === null) {
-                unset($types[$param->var->name]);
-            } else {
-                $types[$param->var->name] = $type;
+            if ($param->var instanceof Variable && is_string($param->var->name)) {
+                $type = $param->variadic ? null : self::typeOf($param->type, $class);
+                // A parameter replaces a captured variable of the same name.
+                $writes[$param->var->name] = [$type === null ? null : new Receiver(ReceiverKind::ClassName, $type)];
             }
         }
 
         $body = $function instanceof ArrowFunction ? [$function->expr] : ($function->getStmts() ?? []);
+        self::collect($body, $class, $writes);
 
-        return array_diff_key($types, self::written($body));
-    }
+        $closure = $function instanceof Closure || $function instanceof ArrowFunction;
 
-    private static function paramType(Param $param, ?string $class): ?string
-    {
-        $type = DeclarationCollector::typeName($param->type, $class ?? '');
-
-        return $type === '' ? null : $type;
+        return new VariableScope($class, $writes, $closure ? $parent : null, inheritsAll: $function instanceof ArrowFunction);
     }
 
     /**
-     * @param array<string, string> $outer
+     * The scope of the code of a file outside every class and function.
      *
-     * @return array<string, string>
+     * @param array<AstNode> $statements
      */
-    private static function captured(Closure $closure, array $outer): array
+    public static function ofScript(array $statements): VariableScope
     {
-        $types = [];
+        $writes = [];
+        self::collect($statements, null, $writes);
 
-        foreach ($closure->uses as $use) {
-            $name = $use->var->name;
+        return new VariableScope(null, $writes);
+    }
 
-            if (!$use->byRef && is_string($name) && isset($outer[$name])) {
-                $types[$name] = $outer[$name];
-            }
-        }
+    private static function typeOf(?AstNode $type, ?string $class): ?string
+    {
+        $name = DeclarationCollector::typeName($type, $class ?? '');
 
-        return $types;
+        return $name === '' ? null : $name;
     }
 
     /**
-     * The names of the variables the code writes to.
+     * Adds every write in the code to `$writes`, with the value it gives or null.
      *
      * @param array<mixed> $nodes
-     *
-     * @return array<string, true>
+     * @param array<string, list<Receiver|VariableScope::INHERITED|null>> $writes
      */
-    private static function written(array $nodes): array
+    private static function collect(array $nodes, ?string $class, array &$writes): void
     {
-        $names = [];
-
         foreach ($nodes as $node) {
             if (!$node instanceof AstNode) {
                 continue;
             }
 
-            $targets = match (true) {
-                $node instanceof Assign, $node instanceof AssignRef, $node instanceof AssignOp => [$node->var],
-                $node instanceof Foreach_ => [$node->keyVar, $node->valueVar],
-                $node instanceof Catch_ => [$node->var],
-                $node instanceof Global_, $node instanceof Static_ => $node->vars,
-                default => [],
-            };
+            // Their own scope: only a by-reference capture writes to a variable of the enclosing code.
+            if ($node instanceof Closure) {
+                foreach ($node->uses as $use) {
+                    if ($use->byRef && is_string($use->var->name)) {
+                        $writes[$use->var->name][] = null;
+                    }
+                }
 
-            foreach ($targets as $target) {
-                $names += self::variables($target);
+                continue;
+            }
+
+            if ($node instanceof ArrowFunction || $node instanceof ClassLike || $node instanceof Function_) {
+                continue;
+            }
+
+            if ($node instanceof Assign) {
+                self::write($node->var, self::value($node->expr), $writes);
+            } elseif ($node instanceof AssignRef) {
+                // Both sides become one variable: a later write through either changes the other.
+                self::write($node->var, null, $writes);
+                self::write($node->expr, null, $writes);
+            } elseif ($node instanceof AssignOp) {
+                self::write($node->var, null, $writes);
+            } elseif ($node instanceof Foreach_) {
+                self::write($node->keyVar, null, $writes);
+                self::write($node->valueVar, null, $writes);
+            } elseif ($node instanceof Catch_) {
+                $caught = count($node->types) === 1 ? self::typeOf($node->types[0], $class) : null;
+                self::write($node->var, $caught === null ? null : new Receiver(ReceiverKind::ClassName, $caught), $writes);
+            } elseif ($node instanceof Global_) {
+                foreach ($node->vars as $var) {
+                    self::write($var, null, $writes);
+                }
+            } elseif ($node instanceof Static_) {
+                foreach ($node->vars as $var) {
+                    self::write($var->var, null, $writes);
+                }
             }
 
             foreach ($node->getSubNodeNames() as $sub) {
                 $child = $node->$sub;
-                $names += self::written(is_array($child) ? $child : [$child]);
+                self::collect(is_array($child) ? $child : [$child], $class, $writes);
             }
         }
-
-        return $names;
     }
 
     /**
-     * Every plain variable inside a write target, so `[$a, $b] = ...` counts both.
-     *
-     * @return array<string, true>
+     * What an assigned value is, in the terms of a call receiver: `new Foo()`, `$this->repo->find()`, `$other`,
+     * `Foo::make()`. Anything else (a ternary, an array, a literal) is null.
      */
-    private static function variables(mixed $target): array
+    private static function value(Expr $value): ?Receiver
+    {
+        $receiver = CallSiteReader::objectReceiver($value);
+
+        return $receiver->kind === ReceiverKind::Other ? null : $receiver;
+    }
+
+    /**
+     * Records a write to a target. A plain variable gets the value; every variable inside a destructuring
+     * (`[$a, $b] = ...`) and the array of an element (`$a[] = ...`) gets null. Properties are not variables.
+     *
+     * @param array<string, list<Receiver|VariableScope::INHERITED|null>> $writes
+     */
+    private static function write(mixed $target, ?Receiver $value, array &$writes): void
     {
         if ($target instanceof Variable) {
-            return is_string($target->name) ? [$target->name => true] : [];
+            if (is_string($target->name)) {
+                $writes[$target->name][] = $value;
+            }
+
+            return;
         }
 
-        $names = [];
+        // `$x[] = ...` changes `$x` itself.
+        if ($target instanceof Expr\ArrayDimFetch) {
+            self::write($target->var, null, $writes);
 
-        if ($target instanceof AstNode && !$target instanceof Expr\PropertyFetch && !$target instanceof Expr\StaticPropertyFetch) {
-            foreach ($target->getSubNodeNames() as $sub) {
-                $child = $target->$sub;
+            return;
+        }
 
-                foreach (is_array($child) ? $child : [$child] as $item) {
-                    $names += self::variables($item);
-                }
+        if (!$target instanceof AstNode || $target instanceof Expr\PropertyFetch || $target instanceof Expr\StaticPropertyFetch) {
+            return;
+        }
+
+        foreach ($target->getSubNodeNames() as $sub) {
+            $child = $target->$sub;
+
+            foreach (is_array($child) ? $child : [$child] as $item) {
+                self::write($item, null, $writes);
             }
         }
-
-        return $names;
     }
 }

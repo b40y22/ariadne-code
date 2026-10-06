@@ -66,25 +66,58 @@ final class DeclarationCollector extends NodeVisitorAbstract
 
     private function describe(ClassLike $node, string $name): ClassInfo
     {
-        if (!$node instanceof Class_) {
-            return new ClassInfo($name, isClass: false);
-        }
-
-        $info = new ClassInfo($name, isClass: true, parent: $node->extends?->toString());
+        $isClass = $node instanceof Class_;
+        $info = new ClassInfo($name, isClass: $isClass, parent: $isClass ? $node->extends?->toString() : null);
 
         foreach ($node->stmts as $stmt) {
             if ($stmt instanceof TraitUse) {
                 $info->open = true;
             } elseif ($stmt instanceof ClassMethod) {
                 $method = $stmt->name->toLowerString();
-                $info->methods[$method] = NodeIds::method($name, $stmt->name->toString());
-                $info->open = $info->open || in_array($method, ['__call', '__callstatic'], true);
+                $returns = $this->returnType($stmt, $name);
+
+                if ($returns !== null) {
+                    $info->returns[$method] = $returns;
+                }
+
+                if ($isClass) {
+                    $info->methods[$method] = NodeIds::method($name, $stmt->name->toString());
+                    $info->open = $info->open || in_array($method, ['__call', '__callstatic'], true);
+                }
             }
         }
 
-        $info->properties = $this->propertyTypes($node, $name);
+        if ($node instanceof Class_) {
+            $info->properties = $this->propertyTypes($node, $name);
+        }
 
         return $info;
+    }
+
+    /**
+     * The class a method returns: its declared return type, or else a `@return` docblock naming one class.
+     * `static` and `$this` mean the class the method is called on.
+     */
+    private function returnType(ClassMethod $method, string $class): ?string
+    {
+        $type = $method->returnType instanceof NullableType ? $method->returnType->type : $method->returnType;
+
+        if ($type instanceof Name && $type->toLowerString() === 'static') {
+            return ClassInfo::RETURNS_STATIC;
+        }
+
+        if ($type !== null) {
+            return self::typeName($type, $class);
+        }
+
+        $written = self::docTag($method->getDocComment(), 'return');
+
+        return match (strtolower($written ?? '')) {
+            '' => null,
+            'static', '$this' => ClassInfo::RETURNS_STATIC,
+            'self' => $class,
+            default => $this->resolveWritten((string) $written),
+        };
     }
 
     /**
@@ -234,7 +267,22 @@ final class DeclarationCollector extends NodeVisitorAbstract
      */
     private function docType(?Doc $doc, string $self): ?string
     {
-        if ($doc === null || preg_match('/@var\s+([\\\\\w?|]+)(?=\s|\*|$)/', $doc->getText(), $match) !== 1) {
+        $written = self::docTag($doc, 'var');
+
+        return match (strtolower($written ?? '')) {
+            '' => null,
+            'self', 'static', '$this' => $self,
+            default => $this->resolveWritten((string) $written),
+        };
+    }
+
+    /**
+     * The single class named by a `@var` or `@return` tag, as written: `Foo`, `?Foo` and `Foo|null` give `Foo`.
+     * Arrays, generics, unions and builtin types give null.
+     */
+    private static function docTag(?Doc $doc, string $tag): ?string
+    {
+        if ($doc === null || preg_match('/@' . $tag . '\s+([\\\\\w?|$]+)(?=\s|\*|$)/', $doc->getText(), $match) !== 1) {
             return null;
         }
 
@@ -247,14 +295,16 @@ final class DeclarationCollector extends NodeVisitorAbstract
         $written = $parts[0];
         $lower = strtolower($written);
 
-        if (in_array($lower, self::NOT_CLASSES, true)) {
+        if (in_array($lower, self::NOT_CLASSES, true) || (str_contains($written, '$') && $lower !== '$this')) {
             return null;
         }
 
-        if (in_array($lower, ['self', 'static'], true)) {
-            return $self;
-        }
+        return $written;
+    }
 
+    /** A class name from a docblock, resolved through the imports of the file. */
+    private function resolveWritten(string $written): string
+    {
         $name = str_starts_with($written, '\\')
             ? new FullyQualified(ltrim($written, '\\'))
             : $this->names->getNameContext()->getResolvedClassName(new Name($written));
