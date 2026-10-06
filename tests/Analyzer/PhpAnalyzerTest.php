@@ -73,7 +73,7 @@ final class PhpAnalyzerTest extends TestCase
             $types[$node->type->value] = true;
         }
 
-        foreach (['class', 'method', 'function', 'script', 'unresolved', 'condition', 'loop', 'try', 'catch', 'throw', 'return', 'call'] as $type) {
+        foreach (['class', 'method', 'function', 'script', 'unresolved', 'condition', 'loop', 'try', 'catch', 'throw', 'return', 'call', 'builtin'] as $type) {
             self::assertArrayHasKey($type, $types, sprintf('The showcase has no "%s" node.', $type));
         }
     }

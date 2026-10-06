@@ -42,14 +42,18 @@ final readonly class FlowLabels
     /**
      * The label of a `return` or `throw`. When the expression is itself a call, the call is already the step
      * just before, and repeating it would only show the same line twice, so the keyword stands alone.
+     * Calls to quiet builtins are the exception, because those steps can be hidden.
      */
     public function keyword(string $keyword, ?Expr $expr): string
     {
-        if ($expr === null || $this->reader->read($expr) !== null) {
+        if ($expr === null) {
             return $keyword;
         }
 
-        return $keyword . ' ' . $this->text($expr);
+        $call = $this->reader->read($expr);
+
+        // A quiet call may be hidden in the UI, and then nothing would show what is returned.
+        return $call !== null && !$call->quiet ? $keyword : $keyword . ' ' . $this->text($expr);
     }
 
     public function forLoop(For_ $stmt): string

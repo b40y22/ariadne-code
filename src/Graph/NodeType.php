@@ -22,6 +22,9 @@ enum NodeType: string
     case Start = 'start';
     case End = 'end';
     case Call = 'call';
+
+    /** A call to a common, side-effect-free PHP function (`count`, `trim`, `array_merge`...): noise a reader can hide. */
+    case Builtin = 'builtin';
     case Condition = 'condition';
     case Loop = 'loop';
     case Try_ = 'try';

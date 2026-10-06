@@ -246,8 +246,8 @@ final class MethodFlowTest extends TestCase
         $flow = $this->flow('function a() { $f = fn() => $this->b(); array_map(function () { $this->c(); }, []); }');
 
         self::assertSame([
-            'start -> call array_map',
-            'call array_map -> call $this->c [callback]',
+            'start -> builtin array_map',
+            'builtin array_map -> call $this->c [callback]',
             'call $this->c -> end',
         ], $flow);
     }
@@ -771,6 +771,104 @@ final class MethodFlowTest extends TestCase
         }
 
         return $names;
+    }
+
+    #[Test]
+    public function callbacks_nest_to_any_depth(): void
+    {
+        $flow = $this->flow('function a() { $this->outer(function () { $this->mid(fn () => $this->inner()); }); }');
+
+        self::assertSame([
+            'start -> call $this->outer',
+            'call $this->outer -> call $this->mid [callback]',
+            'call $this->mid -> call $this->inner [callback]',
+            'call $this->inner -> end',
+        ], $flow);
+    }
+
+    #[Test]
+    public function a_callback_after_a_callback_chain_continues_the_outer_flow(): void
+    {
+        $flow = $this->flow('function a() { $this->outer(function () { $this->mid(fn () => $this->inner()); }); $this->after(); }');
+
+        self::assertContains('call $this->inner -> call $this->after', $flow);
+    }
+
+    #[Test]
+    public function a_throw_inside_a_callback_does_not_leave_the_method(): void
+    {
+        $flow = $this->flow('function a() { $this->run(function () { $this->x(); throw new \E(); }); $this->after(); }');
+
+        self::assertContains('call $this->x -> call $this->after', $flow);
+        self::assertNotContains('call $this->x -> end', $flow);
+    }
+
+    #[Test]
+    public function branches_inside_a_callback_are_plain_steps(): void
+    {
+        $flow = $this->flow('function a() { $this->run(fn ($x) => $x ? $this->yes() : $this->no()); }');
+
+        self::assertSame([
+            'start -> call $this->run',
+            'call $this->run -> call $this->yes [callback]',
+            'call $this->yes -> call $this->no',
+            'call $this->no -> end',
+        ], $flow);
+    }
+
+    #[Test]
+    public function an_exit_inside_a_callback_still_ends_the_script(): void
+    {
+        $flow = $this->flow('function a() { $this->run(function () { die("x"); }); $this->after(); }');
+
+        self::assertContains('call $this->run -> return die("x") [callback]', $flow);
+        self::assertContains('return die("x") -> end', $flow);
+    }
+
+    #[Test]
+    public function common_pure_functions_are_builtin_steps_and_the_rest_are_calls(): void
+    {
+        $flow = $this->flow('function a($x) { $n = count($x); trim($this->s()); header("X: 1"); mysqli_query($c, "q"); array_merge($x, []); }');
+
+        self::assertSame([
+            'start -> builtin count',
+            'builtin count -> call $this->s',
+            'call $this->s -> builtin trim',
+            'builtin trim -> call header',
+            'call header -> call mysqli_query',
+            'call mysqli_query -> builtin array_merge',
+            'builtin array_merge -> end',
+        ], $flow);
+    }
+
+    #[Test]
+    public function builtin_names_match_by_prefix_and_ignore_a_leading_backslash(): void
+    {
+        $flow = $this->flow('function a() { \is_array($x); \array_key_exists("k", $x); preg_match("/x/", $s); stream_get_contents($h); }');
+
+        self::assertSame([
+            'start -> builtin is_array',
+            'builtin is_array -> builtin array_key_exists',
+            'builtin array_key_exists -> builtin preg_match',
+            'builtin preg_match -> call stream_get_contents',
+            'call stream_get_contents -> end',
+        ], $flow);
+    }
+
+    #[Test]
+    public function a_method_with_a_builtin_name_is_still_a_call(): void
+    {
+        $flow = $this->flow('function a() { $this->count(); self::trim(); }');
+
+        self::assertSame(['start -> call $this->count', 'call $this->count -> call self::trim', 'call self::trim -> end'], $flow);
+    }
+
+    #[Test]
+    public function a_return_of_a_builtin_keeps_its_expression_because_the_step_may_be_hidden(): void
+    {
+        $flow = $this->flow('function a($x) { return count($x); }');
+
+        self::assertSame(['start -> builtin count', 'builtin count -> return return count($x)', 'return return count($x) -> end'], $flow);
     }
 
     /**

@@ -173,7 +173,7 @@
         },
         {
             "id": "flow:method:Fixtures\\OrderService::calculateTotal#2",
-            "type": "call",
+            "type": "builtin",
             "name": "array_sum",
             "file": "OrderService.php",
             "lineStart": 29,
@@ -227,7 +227,7 @@
         },
         {
             "id": "flow:method:Fixtures\\OrderService::roundMoney#2",
-            "type": "call",
+            "type": "builtin",
             "name": "round",
             "file": "OrderService.php",
             "lineStart": 34,
@@ -237,7 +237,7 @@
         {
             "id": "flow:method:Fixtures\\OrderService::roundMoney#3",
             "type": "return",
-            "name": "return",
+            "name": "return round($value, 2)",
             "file": "OrderService.php",
             "lineStart": 34,
             "lineEnd": 34,

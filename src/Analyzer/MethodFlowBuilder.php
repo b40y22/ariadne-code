@@ -62,7 +62,8 @@ use PhpParser\Node\Stmt\While_;
  * - `do ... while` is drawn like `while`, with the condition node before the body.
  * - Exceptions thrown by called methods are unknown; a `try` links to each of its `catch` blocks.
  * - A closure or arrow function passed straight to a method, static or function call is a callback: its calls follow that
- *   call as plain steps entered by a `callback` edge. Whether the callee runs it is unknown, so the label says
+ *   call as plain steps entered by a `callback` edge, however deeply callbacks nest. Inside one, `?:`, `??`, `&&`, `match`
+ *   and `throw` are not branched. Whether the callee runs it is unknown, so the label says
  *   "callback" and not "runs". Closures anywhere else add no steps. Their `return` and `throw` never leave the method.
  * - `exit`/`die` leave the flow like `return`; `include`/`require` are a step but the included file is not followed.
  * - A `finally` is reached on normal completion only.
@@ -80,6 +81,9 @@ final class MethodFlowBuilder
 
     /** @var list<FlowExit> */
     private array $toEnd = [];
+
+    /** Greater than zero inside a callback, where only calls are steps: no branches, and a `throw` stays inside. */
+    private int $callbackDepth = 0;
 
     private readonly FlowLabels $labels;
 
@@ -346,6 +350,7 @@ final class MethodFlowBuilder
         }
 
         $branched = match (true) {
+            $this->callbackDepth > 0 && !$node instanceof Exit_ && !$node instanceof Include_ => null,
             $node instanceof Throw_ => $this->throw($node, $in),
             $node instanceof Match_ => $this->match($node, $in),
             $node instanceof Exit_ => $this->exit($node, $in),
@@ -369,7 +374,8 @@ final class MethodFlowBuilder
         $site = $in === [] ? null : $this->reader->read($node);
 
         if ($site !== null) {
-            $in = $this->callbacks($node, $this->step(NodeType::Call, $site->label, $node, $in));
+            $type = $site->quiet ? NodeType::Builtin : NodeType::Call;
+            $in = $this->callbacks($node, $this->step($type, $site->label, $node, $in));
         }
 
         return $in;
@@ -408,9 +414,13 @@ final class MethodFlowBuilder
             $entered = array_map(static fn(FlowExit $exit): FlowExit => new FlowExit($exit->from, 'callback'), $in);
             $out = $entered;
 
+            $this->callbackDepth++;
+
             foreach ($body as $part) {
-                $out = $this->flat($part, $out);
+                $out = $this->evaluate($part, $out);
             }
+
+            $this->callbackDepth--;
 
             if ($out !== $entered) {
                 $in = $out;
@@ -555,22 +565,6 @@ final class MethodFlowBuilder
         $evaluated = $this->evaluate($right, [new FlowExit($condition, $run)]);
 
         return [new FlowExit($condition, $skip), ...$evaluated];
-    }
-
-    /**
-     * Calls inside a construct that is not branched (`switch`, `match`): plain steps in source order.
-     *
-     * @param list<FlowExit> $in
-     *
-     * @return list<FlowExit>
-     */
-    private function flat(AstNode $node, array $in): array
-    {
-        foreach (FlowCallCollector::collect($node, $this->reader) as [$site, $call]) {
-            $in = $this->step(NodeType::Call, $site->label, $call, $in);
-        }
-
-        return $in;
     }
 
     /**

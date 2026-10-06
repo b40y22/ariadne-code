@@ -14,11 +14,13 @@ final readonly class CallSite
      * @param string|null $localMethod Lowercased method name when the call targets the current class.
      * @param list<string> $functions Lowercased names a function call may refer to, most specific first
      *                                (the namespaced name, then the global one). Empty for every other call.
+     * @param bool $quiet Whether this is a call to one of the {@see QuietFunctions}.
      */
     public function __construct(
         public string $label,
         public ?string $localMethod,
         public int $line,
         public array $functions = [],
+        public bool $quiet = false,
     ) {}
 }

@@ -57,11 +57,14 @@ final readonly class CallSiteReader
             return null;
         }
 
+        $functions = $node instanceof FuncCall && $node->name instanceof Name ? $this->functionNames($node->name) : [];
+
         return new CallSite(
             label: $label,
             localMethod: $node instanceof FuncCall ? null : ($isLocal && $node->name instanceof Identifier ? $node->name->toLowerString() : null),
             line: $node->getStartLine(),
-            functions: $node instanceof FuncCall && $node->name instanceof Name ? $this->functionNames($node->name) : [],
+            functions: $functions,
+            quiet: $functions !== [] && QuietFunctions::contains($functions[array_key_last($functions)]),
         );
     }
 

@@ -86,6 +86,24 @@ final class OrderService extends BaseService
         return (new Clock())->now()->format('c');
     }
 
+    /** Common pure functions are `builtin` steps the UI can hide; `error_log` is not one of them. */
+    private function audit(array $data): void
+    {
+        $line = sprintf('%s %s', date('c'), strtolower(trim($data['name'])));
+
+        error_log($line);
+    }
+
+    /** Callbacks nest: the transaction runs a closure that itself passes a closure to `each`. */
+    private function reindex(array $rows): void
+    {
+        DB::transaction(function () use ($rows) {
+            $this->lock($rows);
+
+            collect($rows)->each(fn ($row) => $this->touch($row));
+        });
+    }
+
     private function inStock(array $item): bool
     {
         return $item['qty'] > 0;

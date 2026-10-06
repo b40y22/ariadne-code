@@ -201,8 +201,8 @@ final class ProceduralTest extends TestCase
         $flow = $this->flow('array_map(fn ($x) => helper($x), $items);');
 
         self::assertSame([
-            'start -> call array_map',
-            'call array_map -> call helper [callback]',
+            'start -> builtin array_map',
+            'builtin array_map -> call helper [callback]',
             'call helper -> end',
         ], $flow);
     }

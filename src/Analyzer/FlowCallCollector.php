@@ -40,17 +40,6 @@ final class FlowCallCollector extends NodeVisitorAbstract
         return $collector->calls !== [] || $collector->throws;
     }
 
-    /**
-     * @return list<array{CallSite, AstNode}>
-     */
-    public static function collect(AstNode $node, CallSiteReader $reader): array
-    {
-        $collector = new self($reader);
-        new NodeTraverser($collector)->traverse([$node]);
-
-        return $collector->calls;
-    }
-
     public function enterNode(AstNode $node): ?int
     {
         if ($node instanceof Closure || $node instanceof ArrowFunction || $node instanceof Class_ || $node instanceof Function_) {
