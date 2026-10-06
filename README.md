@@ -30,6 +30,12 @@ make up    # UI on http://localhost:5180, API on http://localhost:8090
 
 The page shows the class map next to the source code. Click a node to jump to its code; move the cursor in the editor to highlight the matching node. Use **Open .php** to analyze your own file.
 
+Classes are containers that hold their methods and can be resized; drag any block and the layout is remembered per file.
+
+**Method flow:** double-click a method (or select it and press **Show flow**) to see how it runs: its calls in execution order, `if` branches (`true`/`false`), loops, `try`/`catch`, `return` and `throw`. A flow can be shared by link, e.g. `http://localhost:5180/#method=method:App\\OrderService::createOrder`.
+
+![Method flow of createOrder](docs/screenshot-flow.png)
+
 The API is a single endpoint, `POST /api/analyze` with `{"code": "...", "file": "A.php"}`, answering with the Code Graph JSON. Submitted code is only parsed, never executed or stored, and requests are limited to 1 MB.
 
 `make demo` analyzes [`tests/fixtures/OrderService.php`](tests/fixtures/OrderService.php) and prints its graph. To analyze your own file:
@@ -113,8 +119,9 @@ Requires PHP 8.5. The graph for [`OrderService.php`](tests/fixtures/OrderService
 - [ ] Interfaces, traits, enums, inheritance and dependency edges
 - [ ] Type-aware call resolution (typed properties, constructor promotion, PHPDoc)
 - [ ] Multiple files and project-level graph
-- [x] Web UI, first cut: class map with drag, zoom, auto-layout, linked to the source code
-- [ ] Web UI: method flow view, expand/collapse, saved layout
+- [x] Web UI: class map with drag, zoom, auto-layout, resizable class containers, saved layout, linked to the source code
+- [x] Web UI: method flow view
+- [ ] Web UI: expand/collapse of dependencies
 - [ ] Step-by-step execution replay of a method
 - [ ] AI explanations grounded in the graph
 
