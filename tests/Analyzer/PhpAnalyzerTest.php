@@ -22,6 +22,7 @@ final class PhpAnalyzerTest extends TestCase
     {
         yield 'OrderService' => ['OrderService'];
         yield 'ShippingService' => ['ShippingService'];
+        yield 'OrderShowcase' => ['OrderShowcase'];
     }
 
     #[Test]
@@ -37,6 +38,32 @@ final class PhpAnalyzerTest extends TestCase
             __DIR__ . "/../fixtures/{$fixture}.graph.json",
             json_encode($graph, JSON_THROW_ON_ERROR),
         );
+    }
+
+    /**
+     * The showcase is the demo the UI opens with, so a feature missing from it is a feature nobody sees.
+     * When the analyzer learns a new kind of branch, add it to OrderShowcase.php and to this list.
+     */
+    #[Test]
+    public function the_showcase_exercises_every_kind_of_flow_edge(): void
+    {
+        $code = file_get_contents(__DIR__ . '/../fixtures/OrderShowcase.php');
+        self::assertIsString($code);
+
+        $labels = [];
+
+        foreach ((new PhpAnalyzer())->analyze($code, 'OrderShowcase.php')->edges() as $edge) {
+            if ($edge->type === EdgeType::Flow && $edge->label !== null) {
+                $labels[$edge->label] = true;
+            }
+        }
+
+        foreach (['true', 'false', 'body', 'exit', 'next', 'exception', 'callback', 'set', 'null', 'default'] as $label) {
+            self::assertArrayHasKey($label, $labels, sprintf('The showcase has no "%s" edge.', $label));
+        }
+
+        $cases = array_filter(array_keys($labels), static fn(string $label): bool => str_starts_with($label, 'case '));
+        self::assertNotEmpty($cases, 'The showcase has no switch case.');
     }
 
     #[Test]

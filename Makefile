@@ -3,7 +3,7 @@ export HOST_GID := $(shell id -g)
 
 RUN := docker compose run --rm php
 
-.PHONY: build install test stan lint fix check demo up down web-install web-check
+.PHONY: build install test stan lint fix check demo snapshots up down web-install web-check
 
 build:
 	docker compose build
@@ -38,6 +38,10 @@ web-install:
 web-check:
 	docker compose run --rm web npm run typecheck
 	docker compose run --rm web npm test
+
+# Rebuilds tests/fixtures/*.graph.json from the fixtures. Review the diff: it is the visible effect of an analyzer change.
+snapshots:
+	$(RUN) sh -c 'cd tests/fixtures && for f in *.php; do php ../../bin/ariadne analyze $$f > $${f%.php}.graph.json; done'
 
 demo:
 	$(RUN) php bin/ariadne analyze tests/fixtures/OrderService.php

@@ -1,0 +1,1262 @@
+{
+    "nodes": [
+        {
+            "id": "class:App\\OrderService",
+            "type": "class",
+            "name": "App\\OrderService",
+            "file": "OrderShowcase.php",
+            "lineStart": 13,
+            "lineEnd": 92,
+            "parent": null
+        },
+        {
+            "id": "method:App\\OrderService::__construct",
+            "type": "method",
+            "name": "__construct",
+            "file": "OrderShowcase.php",
+            "lineStart": 15,
+            "lineEnd": 15,
+            "parent": null
+        },
+        {
+            "id": "flow:method:App\\OrderService::__construct#1",
+            "type": "start",
+            "name": "start",
+            "file": "OrderShowcase.php",
+            "lineStart": 15,
+            "lineEnd": 15,
+            "parent": "method:App\\OrderService::__construct"
+        },
+        {
+            "id": "flow:method:App\\OrderService::__construct#2",
+            "type": "end",
+            "name": "end",
+            "file": "OrderShowcase.php",
+            "lineStart": 15,
+            "lineEnd": 15,
+            "parent": "method:App\\OrderService::__construct"
+        },
+        {
+            "id": "method:App\\OrderService::createOrder",
+            "type": "method",
+            "name": "createOrder",
+            "file": "OrderShowcase.php",
+            "lineStart": 18,
+            "lineEnd": 37,
+            "parent": null
+        },
+        {
+            "id": "flow:method:App\\OrderService::createOrder#1",
+            "type": "start",
+            "name": "start",
+            "file": "OrderShowcase.php",
+            "lineStart": 18,
+            "lineEnd": 37,
+            "parent": "method:App\\OrderService::createOrder"
+        },
+        {
+            "id": "flow:method:App\\OrderService::createOrder#2",
+            "type": "call",
+            "name": "$this->validate",
+            "file": "OrderShowcase.php",
+            "lineStart": 20,
+            "lineEnd": 20,
+            "parent": "method:App\\OrderService::createOrder"
+        },
+        {
+            "id": "flow:method:App\\OrderService::createOrder#3",
+            "type": "loop",
+            "name": "foreach ($data['items'] as $item)",
+            "file": "OrderShowcase.php",
+            "lineStart": 23,
+            "lineEnd": 34,
+            "parent": "method:App\\OrderService::createOrder"
+        },
+        {
+            "id": "flow:method:App\\OrderService::createOrder#4",
+            "type": "call",
+            "name": "$this->inStock",
+            "file": "OrderShowcase.php",
+            "lineStart": 24,
+            "lineEnd": 24,
+            "parent": "method:App\\OrderService::createOrder"
+        },
+        {
+            "id": "flow:method:App\\OrderService::createOrder#5",
+            "type": "condition",
+            "name": "!$this->inStock($item)",
+            "file": "OrderShowcase.php",
+            "lineStart": 24,
+            "lineEnd": 24,
+            "parent": "method:App\\OrderService::createOrder"
+        },
+        {
+            "id": "flow:method:App\\OrderService::createOrder#6",
+            "type": "try",
+            "name": "try",
+            "file": "OrderShowcase.php",
+            "lineStart": 28,
+            "lineEnd": 33,
+            "parent": "method:App\\OrderService::createOrder"
+        },
+        {
+            "id": "flow:method:App\\OrderService::createOrder#7",
+            "type": "call",
+            "name": "$this->price",
+            "file": "OrderShowcase.php",
+            "lineStart": 29,
+            "lineEnd": 29,
+            "parent": "method:App\\OrderService::createOrder"
+        },
+        {
+            "id": "flow:method:App\\OrderService::createOrder#8",
+            "type": "catch",
+            "name": "catch (PricingException $e)",
+            "file": "OrderShowcase.php",
+            "lineStart": 30,
+            "lineEnd": 33,
+            "parent": "method:App\\OrderService::createOrder"
+        },
+        {
+            "id": "flow:method:App\\OrderService::createOrder#9",
+            "type": "call",
+            "name": "$this->log",
+            "file": "OrderShowcase.php",
+            "lineStart": 31,
+            "lineEnd": 31,
+            "parent": "method:App\\OrderService::createOrder"
+        },
+        {
+            "id": "flow:method:App\\OrderService::createOrder#10",
+            "type": "throw",
+            "name": "throw $e",
+            "file": "OrderShowcase.php",
+            "lineStart": 32,
+            "lineEnd": 32,
+            "parent": "method:App\\OrderService::createOrder"
+        },
+        {
+            "id": "flow:method:App\\OrderService::createOrder#11",
+            "type": "call",
+            "name": "DB::transaction",
+            "file": "OrderShowcase.php",
+            "lineStart": 36,
+            "lineEnd": 36,
+            "parent": "method:App\\OrderService::createOrder"
+        },
+        {
+            "id": "flow:method:App\\OrderService::createOrder#12",
+            "type": "call",
+            "name": "self::roundMoney",
+            "file": "OrderShowcase.php",
+            "lineStart": 36,
+            "lineEnd": 36,
+            "parent": "method:App\\OrderService::createOrder"
+        },
+        {
+            "id": "flow:method:App\\OrderService::createOrder#13",
+            "type": "call",
+            "name": "$this->orders->save",
+            "file": "OrderShowcase.php",
+            "lineStart": 36,
+            "lineEnd": 36,
+            "parent": "method:App\\OrderService::createOrder"
+        },
+        {
+            "id": "flow:method:App\\OrderService::createOrder#14",
+            "type": "return",
+            "name": "return DB::transaction(fn() => $this->orders->save($data, self::ro…",
+            "file": "OrderShowcase.php",
+            "lineStart": 36,
+            "lineEnd": 36,
+            "parent": "method:App\\OrderService::createOrder"
+        },
+        {
+            "id": "flow:method:App\\OrderService::createOrder#15",
+            "type": "end",
+            "name": "end",
+            "file": "OrderShowcase.php",
+            "lineStart": 18,
+            "lineEnd": 37,
+            "parent": "method:App\\OrderService::createOrder"
+        },
+        {
+            "id": "method:App\\OrderService::discount",
+            "type": "method",
+            "name": "discount",
+            "file": "OrderShowcase.php",
+            "lineStart": 40,
+            "lineEnd": 48,
+            "parent": null
+        },
+        {
+            "id": "flow:method:App\\OrderService::discount#1",
+            "type": "start",
+            "name": "start",
+            "file": "OrderShowcase.php",
+            "lineStart": 40,
+            "lineEnd": 48,
+            "parent": "method:App\\OrderService::discount"
+        },
+        {
+            "id": "flow:method:App\\OrderService::discount#2",
+            "type": "condition",
+            "name": "$this->rates ??=",
+            "file": "OrderShowcase.php",
+            "lineStart": 42,
+            "lineEnd": 42,
+            "parent": "method:App\\OrderService::discount"
+        },
+        {
+            "id": "flow:method:App\\OrderService::discount#3",
+            "type": "call",
+            "name": "$this->loadRates",
+            "file": "OrderShowcase.php",
+            "lineStart": 42,
+            "lineEnd": 42,
+            "parent": "method:App\\OrderService::discount"
+        },
+        {
+            "id": "flow:method:App\\OrderService::discount#4",
+            "type": "condition",
+            "name": "$order['coupon'] ??",
+            "file": "OrderShowcase.php",
+            "lineStart": 44,
+            "lineEnd": 44,
+            "parent": "method:App\\OrderService::discount"
+        },
+        {
+            "id": "flow:method:App\\OrderService::discount#5",
+            "type": "call",
+            "name": "$this->defaultRate",
+            "file": "OrderShowcase.php",
+            "lineStart": 44,
+            "lineEnd": 44,
+            "parent": "method:App\\OrderService::discount"
+        },
+        {
+            "id": "flow:method:App\\OrderService::discount#6",
+            "type": "call",
+            "name": "$this->isVip",
+            "file": "OrderShowcase.php",
+            "lineStart": 45,
+            "lineEnd": 45,
+            "parent": "method:App\\OrderService::discount"
+        },
+        {
+            "id": "flow:method:App\\OrderService::discount#7",
+            "type": "condition",
+            "name": "$this->isVip($order['user']) &&",
+            "file": "OrderShowcase.php",
+            "lineStart": 45,
+            "lineEnd": 45,
+            "parent": "method:App\\OrderService::discount"
+        },
+        {
+            "id": "flow:method:App\\OrderService::discount#8",
+            "type": "call",
+            "name": "$this->hasHistory",
+            "file": "OrderShowcase.php",
+            "lineStart": 45,
+            "lineEnd": 45,
+            "parent": "method:App\\OrderService::discount"
+        },
+        {
+            "id": "flow:method:App\\OrderService::discount#9",
+            "type": "condition",
+            "name": "$vip ?",
+            "file": "OrderShowcase.php",
+            "lineStart": 47,
+            "lineEnd": 47,
+            "parent": "method:App\\OrderService::discount"
+        },
+        {
+            "id": "flow:method:App\\OrderService::discount#10",
+            "type": "call",
+            "name": "$this->clamp",
+            "file": "OrderShowcase.php",
+            "lineStart": 47,
+            "lineEnd": 47,
+            "parent": "method:App\\OrderService::discount"
+        },
+        {
+            "id": "flow:method:App\\OrderService::discount#11",
+            "type": "return",
+            "name": "return $vip ? $rate * 2 : $this->clamp($rate)",
+            "file": "OrderShowcase.php",
+            "lineStart": 47,
+            "lineEnd": 47,
+            "parent": "method:App\\OrderService::discount"
+        },
+        {
+            "id": "flow:method:App\\OrderService::discount#12",
+            "type": "end",
+            "name": "end",
+            "file": "OrderShowcase.php",
+            "lineStart": 40,
+            "lineEnd": 48,
+            "parent": "method:App\\OrderService::discount"
+        },
+        {
+            "id": "method:App\\OrderService::ship",
+            "type": "method",
+            "name": "ship",
+            "file": "OrderShowcase.php",
+            "lineStart": 51,
+            "lineEnd": 69,
+            "parent": null
+        },
+        {
+            "id": "flow:method:App\\OrderService::ship#1",
+            "type": "start",
+            "name": "start",
+            "file": "OrderShowcase.php",
+            "lineStart": 51,
+            "lineEnd": 69,
+            "parent": "method:App\\OrderService::ship"
+        },
+        {
+            "id": "flow:method:App\\OrderService::ship#2",
+            "type": "condition",
+            "name": "switch ($order['method'])",
+            "file": "OrderShowcase.php",
+            "lineStart": 53,
+            "lineEnd": 53,
+            "parent": "method:App\\OrderService::ship"
+        },
+        {
+            "id": "flow:method:App\\OrderService::ship#3",
+            "type": "call",
+            "name": "$this->printLabel",
+            "file": "OrderShowcase.php",
+            "lineStart": 56,
+            "lineEnd": 56,
+            "parent": "method:App\\OrderService::ship"
+        },
+        {
+            "id": "flow:method:App\\OrderService::ship#4",
+            "type": "call",
+            "name": "$this->reserveShelf",
+            "file": "OrderShowcase.php",
+            "lineStart": 59,
+            "lineEnd": 59,
+            "parent": "method:App\\OrderService::ship"
+        },
+        {
+            "id": "flow:method:App\\OrderService::ship#5",
+            "type": "call",
+            "name": "$this->notify",
+            "file": "OrderShowcase.php",
+            "lineStart": 61,
+            "lineEnd": 61,
+            "parent": "method:App\\OrderService::ship"
+        },
+        {
+            "id": "flow:method:App\\OrderService::ship#6",
+            "type": "condition",
+            "name": "match ($order['region'])",
+            "file": "OrderShowcase.php",
+            "lineStart": 64,
+            "lineEnd": 64,
+            "parent": "method:App\\OrderService::ship"
+        },
+        {
+            "id": "flow:method:App\\OrderService::ship#7",
+            "type": "call",
+            "name": "$this->euRate",
+            "file": "OrderShowcase.php",
+            "lineStart": 65,
+            "lineEnd": 65,
+            "parent": "method:App\\OrderService::ship"
+        },
+        {
+            "id": "flow:method:App\\OrderService::ship#8",
+            "type": "call",
+            "name": "$this->usRate",
+            "file": "OrderShowcase.php",
+            "lineStart": 66,
+            "lineEnd": 66,
+            "parent": "method:App\\OrderService::ship"
+        },
+        {
+            "id": "flow:method:App\\OrderService::ship#9",
+            "type": "throw",
+            "name": "throw new UnsupportedRegion($order['region'])",
+            "file": "OrderShowcase.php",
+            "lineStart": 67,
+            "lineEnd": 67,
+            "parent": "method:App\\OrderService::ship"
+        },
+        {
+            "id": "flow:method:App\\OrderService::ship#10",
+            "type": "return",
+            "name": "return match ($order['region']) { 'eu', 'uk' => $this->euRate($ord…",
+            "file": "OrderShowcase.php",
+            "lineStart": 64,
+            "lineEnd": 68,
+            "parent": "method:App\\OrderService::ship"
+        },
+        {
+            "id": "flow:method:App\\OrderService::ship#11",
+            "type": "end",
+            "name": "end",
+            "file": "OrderShowcase.php",
+            "lineStart": 51,
+            "lineEnd": 69,
+            "parent": "method:App\\OrderService::ship"
+        },
+        {
+            "id": "method:App\\OrderService::validate",
+            "type": "method",
+            "name": "validate",
+            "file": "OrderShowcase.php",
+            "lineStart": 71,
+            "lineEnd": 76,
+            "parent": null
+        },
+        {
+            "id": "flow:method:App\\OrderService::validate#1",
+            "type": "start",
+            "name": "start",
+            "file": "OrderShowcase.php",
+            "lineStart": 71,
+            "lineEnd": 76,
+            "parent": "method:App\\OrderService::validate"
+        },
+        {
+            "id": "flow:method:App\\OrderService::validate#2",
+            "type": "condition",
+            "name": "$data === []",
+            "file": "OrderShowcase.php",
+            "lineStart": 73,
+            "lineEnd": 73,
+            "parent": "method:App\\OrderService::validate"
+        },
+        {
+            "id": "flow:method:App\\OrderService::validate#3",
+            "type": "throw",
+            "name": "throw new \\InvalidArgumentException('Empty order')",
+            "file": "OrderShowcase.php",
+            "lineStart": 74,
+            "lineEnd": 74,
+            "parent": "method:App\\OrderService::validate"
+        },
+        {
+            "id": "flow:method:App\\OrderService::validate#4",
+            "type": "end",
+            "name": "end",
+            "file": "OrderShowcase.php",
+            "lineStart": 71,
+            "lineEnd": 76,
+            "parent": "method:App\\OrderService::validate"
+        },
+        {
+            "id": "method:App\\OrderService::inStock",
+            "type": "method",
+            "name": "inStock",
+            "file": "OrderShowcase.php",
+            "lineStart": 78,
+            "lineEnd": 81,
+            "parent": null
+        },
+        {
+            "id": "flow:method:App\\OrderService::inStock#1",
+            "type": "start",
+            "name": "start",
+            "file": "OrderShowcase.php",
+            "lineStart": 78,
+            "lineEnd": 81,
+            "parent": "method:App\\OrderService::inStock"
+        },
+        {
+            "id": "flow:method:App\\OrderService::inStock#2",
+            "type": "return",
+            "name": "return $item['qty'] > 0",
+            "file": "OrderShowcase.php",
+            "lineStart": 80,
+            "lineEnd": 80,
+            "parent": "method:App\\OrderService::inStock"
+        },
+        {
+            "id": "flow:method:App\\OrderService::inStock#3",
+            "type": "end",
+            "name": "end",
+            "file": "OrderShowcase.php",
+            "lineStart": 78,
+            "lineEnd": 81,
+            "parent": "method:App\\OrderService::inStock"
+        },
+        {
+            "id": "method:App\\OrderService::price",
+            "type": "method",
+            "name": "price",
+            "file": "OrderShowcase.php",
+            "lineStart": 83,
+            "lineEnd": 86,
+            "parent": null
+        },
+        {
+            "id": "flow:method:App\\OrderService::price#1",
+            "type": "start",
+            "name": "start",
+            "file": "OrderShowcase.php",
+            "lineStart": 83,
+            "lineEnd": 86,
+            "parent": "method:App\\OrderService::price"
+        },
+        {
+            "id": "flow:method:App\\OrderService::price#2",
+            "type": "return",
+            "name": "return $item['qty'] * $item['price']",
+            "file": "OrderShowcase.php",
+            "lineStart": 85,
+            "lineEnd": 85,
+            "parent": "method:App\\OrderService::price"
+        },
+        {
+            "id": "flow:method:App\\OrderService::price#3",
+            "type": "end",
+            "name": "end",
+            "file": "OrderShowcase.php",
+            "lineStart": 83,
+            "lineEnd": 86,
+            "parent": "method:App\\OrderService::price"
+        },
+        {
+            "id": "method:App\\OrderService::roundMoney",
+            "type": "method",
+            "name": "roundMoney",
+            "file": "OrderShowcase.php",
+            "lineStart": 88,
+            "lineEnd": 91,
+            "parent": null
+        },
+        {
+            "id": "flow:method:App\\OrderService::roundMoney#1",
+            "type": "start",
+            "name": "start",
+            "file": "OrderShowcase.php",
+            "lineStart": 88,
+            "lineEnd": 91,
+            "parent": "method:App\\OrderService::roundMoney"
+        },
+        {
+            "id": "flow:method:App\\OrderService::roundMoney#2",
+            "type": "return",
+            "name": "return round($value, 2)",
+            "file": "OrderShowcase.php",
+            "lineStart": 90,
+            "lineEnd": 90,
+            "parent": "method:App\\OrderService::roundMoney"
+        },
+        {
+            "id": "flow:method:App\\OrderService::roundMoney#3",
+            "type": "end",
+            "name": "end",
+            "file": "OrderShowcase.php",
+            "lineStart": 88,
+            "lineEnd": 91,
+            "parent": "method:App\\OrderService::roundMoney"
+        },
+        {
+            "id": "unresolved:$this->log",
+            "type": "unresolved",
+            "name": "$this->log",
+            "file": null,
+            "lineStart": null,
+            "lineEnd": null,
+            "parent": null
+        },
+        {
+            "id": "unresolved:App\\DB::transaction",
+            "type": "unresolved",
+            "name": "App\\DB::transaction",
+            "file": null,
+            "lineStart": null,
+            "lineEnd": null,
+            "parent": null
+        },
+        {
+            "id": "unresolved:$this->orders->save",
+            "type": "unresolved",
+            "name": "$this->orders->save",
+            "file": null,
+            "lineStart": null,
+            "lineEnd": null,
+            "parent": null
+        },
+        {
+            "id": "unresolved:$this->loadRates",
+            "type": "unresolved",
+            "name": "$this->loadRates",
+            "file": null,
+            "lineStart": null,
+            "lineEnd": null,
+            "parent": null
+        },
+        {
+            "id": "unresolved:$this->defaultRate",
+            "type": "unresolved",
+            "name": "$this->defaultRate",
+            "file": null,
+            "lineStart": null,
+            "lineEnd": null,
+            "parent": null
+        },
+        {
+            "id": "unresolved:$this->isVip",
+            "type": "unresolved",
+            "name": "$this->isVip",
+            "file": null,
+            "lineStart": null,
+            "lineEnd": null,
+            "parent": null
+        },
+        {
+            "id": "unresolved:$this->hasHistory",
+            "type": "unresolved",
+            "name": "$this->hasHistory",
+            "file": null,
+            "lineStart": null,
+            "lineEnd": null,
+            "parent": null
+        },
+        {
+            "id": "unresolved:$this->clamp",
+            "type": "unresolved",
+            "name": "$this->clamp",
+            "file": null,
+            "lineStart": null,
+            "lineEnd": null,
+            "parent": null
+        },
+        {
+            "id": "unresolved:$this->printLabel",
+            "type": "unresolved",
+            "name": "$this->printLabel",
+            "file": null,
+            "lineStart": null,
+            "lineEnd": null,
+            "parent": null
+        },
+        {
+            "id": "unresolved:$this->reserveShelf",
+            "type": "unresolved",
+            "name": "$this->reserveShelf",
+            "file": null,
+            "lineStart": null,
+            "lineEnd": null,
+            "parent": null
+        },
+        {
+            "id": "unresolved:$this->notify",
+            "type": "unresolved",
+            "name": "$this->notify",
+            "file": null,
+            "lineStart": null,
+            "lineEnd": null,
+            "parent": null
+        },
+        {
+            "id": "unresolved:$this->euRate",
+            "type": "unresolved",
+            "name": "$this->euRate",
+            "file": null,
+            "lineStart": null,
+            "lineEnd": null,
+            "parent": null
+        },
+        {
+            "id": "unresolved:$this->usRate",
+            "type": "unresolved",
+            "name": "$this->usRate",
+            "file": null,
+            "lineStart": null,
+            "lineEnd": null,
+            "parent": null
+        }
+    ],
+    "edges": [
+        {
+            "from": "class:App\\OrderService",
+            "to": "method:App\\OrderService::__construct",
+            "type": "contains",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::__construct#1",
+            "to": "flow:method:App\\OrderService::__construct#2",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "class:App\\OrderService",
+            "to": "method:App\\OrderService::createOrder",
+            "type": "contains",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::createOrder#1",
+            "to": "flow:method:App\\OrderService::createOrder#2",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::createOrder#2",
+            "to": "flow:method:App\\OrderService::createOrder#3",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::createOrder#3",
+            "to": "flow:method:App\\OrderService::createOrder#4",
+            "type": "flow",
+            "line": null,
+            "label": "body"
+        },
+        {
+            "from": "flow:method:App\\OrderService::createOrder#4",
+            "to": "flow:method:App\\OrderService::createOrder#5",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::createOrder#5",
+            "to": "flow:method:App\\OrderService::createOrder#3",
+            "type": "flow",
+            "line": null,
+            "label": "true"
+        },
+        {
+            "from": "flow:method:App\\OrderService::createOrder#5",
+            "to": "flow:method:App\\OrderService::createOrder#6",
+            "type": "flow",
+            "line": null,
+            "label": "false"
+        },
+        {
+            "from": "flow:method:App\\OrderService::createOrder#6",
+            "to": "flow:method:App\\OrderService::createOrder#7",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::createOrder#6",
+            "to": "flow:method:App\\OrderService::createOrder#8",
+            "type": "flow",
+            "line": null,
+            "label": "exception"
+        },
+        {
+            "from": "flow:method:App\\OrderService::createOrder#8",
+            "to": "flow:method:App\\OrderService::createOrder#9",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::createOrder#9",
+            "to": "flow:method:App\\OrderService::createOrder#10",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::createOrder#7",
+            "to": "flow:method:App\\OrderService::createOrder#3",
+            "type": "flow",
+            "line": null,
+            "label": "next"
+        },
+        {
+            "from": "flow:method:App\\OrderService::createOrder#3",
+            "to": "flow:method:App\\OrderService::createOrder#11",
+            "type": "flow",
+            "line": null,
+            "label": "exit"
+        },
+        {
+            "from": "flow:method:App\\OrderService::createOrder#11",
+            "to": "flow:method:App\\OrderService::createOrder#12",
+            "type": "flow",
+            "line": null,
+            "label": "callback"
+        },
+        {
+            "from": "flow:method:App\\OrderService::createOrder#12",
+            "to": "flow:method:App\\OrderService::createOrder#13",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::createOrder#13",
+            "to": "flow:method:App\\OrderService::createOrder#14",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::createOrder#10",
+            "to": "flow:method:App\\OrderService::createOrder#15",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::createOrder#14",
+            "to": "flow:method:App\\OrderService::createOrder#15",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "class:App\\OrderService",
+            "to": "method:App\\OrderService::discount",
+            "type": "contains",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::discount#1",
+            "to": "flow:method:App\\OrderService::discount#2",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::discount#2",
+            "to": "flow:method:App\\OrderService::discount#3",
+            "type": "flow",
+            "line": null,
+            "label": "null"
+        },
+        {
+            "from": "flow:method:App\\OrderService::discount#2",
+            "to": "flow:method:App\\OrderService::discount#4",
+            "type": "flow",
+            "line": null,
+            "label": "set"
+        },
+        {
+            "from": "flow:method:App\\OrderService::discount#3",
+            "to": "flow:method:App\\OrderService::discount#4",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::discount#4",
+            "to": "flow:method:App\\OrderService::discount#5",
+            "type": "flow",
+            "line": null,
+            "label": "null"
+        },
+        {
+            "from": "flow:method:App\\OrderService::discount#4",
+            "to": "flow:method:App\\OrderService::discount#6",
+            "type": "flow",
+            "line": null,
+            "label": "set"
+        },
+        {
+            "from": "flow:method:App\\OrderService::discount#5",
+            "to": "flow:method:App\\OrderService::discount#6",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::discount#6",
+            "to": "flow:method:App\\OrderService::discount#7",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::discount#7",
+            "to": "flow:method:App\\OrderService::discount#8",
+            "type": "flow",
+            "line": null,
+            "label": "true"
+        },
+        {
+            "from": "flow:method:App\\OrderService::discount#7",
+            "to": "flow:method:App\\OrderService::discount#9",
+            "type": "flow",
+            "line": null,
+            "label": "false"
+        },
+        {
+            "from": "flow:method:App\\OrderService::discount#8",
+            "to": "flow:method:App\\OrderService::discount#9",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::discount#9",
+            "to": "flow:method:App\\OrderService::discount#10",
+            "type": "flow",
+            "line": null,
+            "label": "false"
+        },
+        {
+            "from": "flow:method:App\\OrderService::discount#9",
+            "to": "flow:method:App\\OrderService::discount#11",
+            "type": "flow",
+            "line": null,
+            "label": "true"
+        },
+        {
+            "from": "flow:method:App\\OrderService::discount#10",
+            "to": "flow:method:App\\OrderService::discount#11",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::discount#11",
+            "to": "flow:method:App\\OrderService::discount#12",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "class:App\\OrderService",
+            "to": "method:App\\OrderService::ship",
+            "type": "contains",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::ship#1",
+            "to": "flow:method:App\\OrderService::ship#2",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::ship#2",
+            "to": "flow:method:App\\OrderService::ship#3",
+            "type": "flow",
+            "line": null,
+            "label": "case 'post'"
+        },
+        {
+            "from": "flow:method:App\\OrderService::ship#2",
+            "to": "flow:method:App\\OrderService::ship#3",
+            "type": "flow",
+            "line": null,
+            "label": "case 'courier'"
+        },
+        {
+            "from": "flow:method:App\\OrderService::ship#2",
+            "to": "flow:method:App\\OrderService::ship#4",
+            "type": "flow",
+            "line": null,
+            "label": "case 'pickup'"
+        },
+        {
+            "from": "flow:method:App\\OrderService::ship#2",
+            "to": "flow:method:App\\OrderService::ship#5",
+            "type": "flow",
+            "line": null,
+            "label": "default"
+        },
+        {
+            "from": "flow:method:App\\OrderService::ship#4",
+            "to": "flow:method:App\\OrderService::ship#5",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::ship#5",
+            "to": "flow:method:App\\OrderService::ship#6",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::ship#3",
+            "to": "flow:method:App\\OrderService::ship#6",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::ship#6",
+            "to": "flow:method:App\\OrderService::ship#7",
+            "type": "flow",
+            "line": null,
+            "label": "'eu', 'uk'"
+        },
+        {
+            "from": "flow:method:App\\OrderService::ship#6",
+            "to": "flow:method:App\\OrderService::ship#8",
+            "type": "flow",
+            "line": null,
+            "label": "'us'"
+        },
+        {
+            "from": "flow:method:App\\OrderService::ship#6",
+            "to": "flow:method:App\\OrderService::ship#9",
+            "type": "flow",
+            "line": null,
+            "label": "default"
+        },
+        {
+            "from": "flow:method:App\\OrderService::ship#7",
+            "to": "flow:method:App\\OrderService::ship#10",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::ship#8",
+            "to": "flow:method:App\\OrderService::ship#10",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::ship#9",
+            "to": "flow:method:App\\OrderService::ship#11",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::ship#10",
+            "to": "flow:method:App\\OrderService::ship#11",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "class:App\\OrderService",
+            "to": "method:App\\OrderService::validate",
+            "type": "contains",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::validate#1",
+            "to": "flow:method:App\\OrderService::validate#2",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::validate#2",
+            "to": "flow:method:App\\OrderService::validate#3",
+            "type": "flow",
+            "line": null,
+            "label": "true"
+        },
+        {
+            "from": "flow:method:App\\OrderService::validate#2",
+            "to": "flow:method:App\\OrderService::validate#4",
+            "type": "flow",
+            "line": null,
+            "label": "false"
+        },
+        {
+            "from": "flow:method:App\\OrderService::validate#3",
+            "to": "flow:method:App\\OrderService::validate#4",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "class:App\\OrderService",
+            "to": "method:App\\OrderService::inStock",
+            "type": "contains",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::inStock#1",
+            "to": "flow:method:App\\OrderService::inStock#2",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::inStock#2",
+            "to": "flow:method:App\\OrderService::inStock#3",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "class:App\\OrderService",
+            "to": "method:App\\OrderService::price",
+            "type": "contains",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::price#1",
+            "to": "flow:method:App\\OrderService::price#2",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::price#2",
+            "to": "flow:method:App\\OrderService::price#3",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "class:App\\OrderService",
+            "to": "method:App\\OrderService::roundMoney",
+            "type": "contains",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::roundMoney#1",
+            "to": "flow:method:App\\OrderService::roundMoney#2",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:App\\OrderService::roundMoney#2",
+            "to": "flow:method:App\\OrderService::roundMoney#3",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "method:App\\OrderService::createOrder",
+            "to": "method:App\\OrderService::validate",
+            "type": "calls",
+            "line": 20,
+            "label": null
+        },
+        {
+            "from": "method:App\\OrderService::createOrder",
+            "to": "method:App\\OrderService::inStock",
+            "type": "calls",
+            "line": 24,
+            "label": null
+        },
+        {
+            "from": "method:App\\OrderService::createOrder",
+            "to": "method:App\\OrderService::price",
+            "type": "calls",
+            "line": 29,
+            "label": null
+        },
+        {
+            "from": "method:App\\OrderService::createOrder",
+            "to": "unresolved:$this->log",
+            "type": "calls",
+            "line": 31,
+            "label": null
+        },
+        {
+            "from": "method:App\\OrderService::createOrder",
+            "to": "unresolved:App\\DB::transaction",
+            "type": "calls",
+            "line": 36,
+            "label": null
+        },
+        {
+            "from": "method:App\\OrderService::createOrder",
+            "to": "unresolved:$this->orders->save",
+            "type": "calls",
+            "line": 36,
+            "label": null
+        },
+        {
+            "from": "method:App\\OrderService::createOrder",
+            "to": "method:App\\OrderService::roundMoney",
+            "type": "calls",
+            "line": 36,
+            "label": null
+        },
+        {
+            "from": "method:App\\OrderService::discount",
+            "to": "unresolved:$this->loadRates",
+            "type": "calls",
+            "line": 42,
+            "label": null
+        },
+        {
+            "from": "method:App\\OrderService::discount",
+            "to": "unresolved:$this->defaultRate",
+            "type": "calls",
+            "line": 44,
+            "label": null
+        },
+        {
+            "from": "method:App\\OrderService::discount",
+            "to": "unresolved:$this->isVip",
+            "type": "calls",
+            "line": 45,
+            "label": null
+        },
+        {
+            "from": "method:App\\OrderService::discount",
+            "to": "unresolved:$this->hasHistory",
+            "type": "calls",
+            "line": 45,
+            "label": null
+        },
+        {
+            "from": "method:App\\OrderService::discount",
+            "to": "unresolved:$this->clamp",
+            "type": "calls",
+            "line": 47,
+            "label": null
+        },
+        {
+            "from": "method:App\\OrderService::ship",
+            "to": "unresolved:$this->printLabel",
+            "type": "calls",
+            "line": 56,
+            "label": null
+        },
+        {
+            "from": "method:App\\OrderService::ship",
+            "to": "unresolved:$this->reserveShelf",
+            "type": "calls",
+            "line": 59,
+            "label": null
+        },
+        {
+            "from": "method:App\\OrderService::ship",
+            "to": "unresolved:$this->notify",
+            "type": "calls",
+            "line": 61,
+            "label": null
+        },
+        {
+            "from": "method:App\\OrderService::ship",
+            "to": "unresolved:$this->euRate",
+            "type": "calls",
+            "line": 65,
+            "label": null
+        },
+        {
+            "from": "method:App\\OrderService::ship",
+            "to": "unresolved:$this->usRate",
+            "type": "calls",
+            "line": 66,
+            "label": null
+        }
+    ]
+}
