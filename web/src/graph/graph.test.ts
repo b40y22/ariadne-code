@@ -27,6 +27,7 @@ const graph: Graph = {
     node('method:A::a', 'method', 3, 9),
     node('method:A::b', 'method', 11, 15),
     node('unresolved:$x->go', 'unresolved'),
+    node('external:lib\\clock::now', 'external'),
     { ...node('flow:method:A::a#1', 'start', 3, 9), parent: 'method:A::a' },
   ],
   edges: [
@@ -35,15 +36,16 @@ const graph: Graph = {
     edge('method:A::a', 'method:A::b', 'calls', 5),
     edge('method:A::a', 'method:A::b', 'calls', 7),
     edge('method:A::a', 'unresolved:$x->go', 'calls', 8),
+    edge('method:A::b', 'external:lib\\clock::now', 'calls', 12),
     edge('flow:method:A::a#1', 'method:A::b', 'flow'),
   ],
 }
 
 describe('toClassMap', () => {
-  it('keeps classes, methods and unresolved targets but drops flow nodes', () => {
+  it('keeps classes, methods, unresolved and external targets but drops flow nodes', () => {
     const { nodes } = toClassMap(graph)
 
-    expect(nodes.map((n) => n.id)).toEqual(['class:A', 'method:A::a', 'method:A::b', 'unresolved:$x->go'])
+    expect(nodes.map((n) => n.id)).toEqual(['class:A', 'method:A::a', 'method:A::b', 'unresolved:$x->go', 'external:lib\\clock::now'])
   })
 
   it('labels methods with parentheses', () => {
@@ -59,6 +61,7 @@ describe('toClassMap', () => {
     expect(byId.get('class:A')).toMatchObject({ kind: 'class', subtitle: '2 methods' })
     expect(byId.get('method:A::a')).toMatchObject({ kind: 'method', subtitle: 'L3–9' })
     expect(byId.get('unresolved:$x->go')?.kind).toBe('unresolved')
+    expect(byId.get('external:lib\\clock::now')).toMatchObject({ kind: 'external', subtitle: 'outside the analyzed files' })
   })
 
   it('nests methods inside their class instead of drawing containment edges', () => {
@@ -72,7 +75,7 @@ describe('toClassMap', () => {
     expect(edges.every((e) => e.class?.toString().includes('ariadne-edge-calls'))).toBe(true)
   })
 
-  it('can leave out unresolved calls together with the edges that lead to them', () => {
+  it('can leave out unresolved and external calls together with the edges that lead to them', () => {
     const { nodes, edges } = toClassMap(graph, { includeUnresolved: false })
 
     expect(nodes.map((n) => n.id)).toEqual(['class:A', 'method:A::a', 'method:A::b'])

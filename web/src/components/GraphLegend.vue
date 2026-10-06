@@ -6,6 +6,7 @@ withDefaults(defineProps<{ mode: 'map' | 'flow'; unresolved?: boolean }>(), { un
   <ul v-if="mode === 'map'" class="legend" aria-label="Legend">
     <li><span class="swatch call" />call</li>
     <li><span class="swatch group" />class</li>
+    <li v-if="unresolved"><span class="swatch external" />external</li>
     <li v-if="unresolved"><span class="swatch unresolved" />unresolved</li>
     <li class="hint">double-click a method to open its flow</li>
   </ul>
@@ -74,6 +75,12 @@ withDefaults(defineProps<{ mode: 'map' | 'flow'; unresolved?: boolean }>(), { un
   border: 1.5px solid var(--border-strong);
   border-radius: 4px;
   background: rgba(255, 255, 255, 0.03);
+}
+
+.swatch.external {
+  height: 10px;
+  border: 1.5px solid rgba(255, 255, 255, 0.22);
+  border-radius: 4px;
 }
 
 .swatch.unresolved {

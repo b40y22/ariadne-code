@@ -14,9 +14,9 @@ use Ariadne\Graph\NodeType;
  * The second half of the second pass: turns each pending call into a `calls` edge to the method or function it
  * reaches, once every file of the project is known.
  *
- * A method is looked up in the class the receiver names, then in its parents, the way PHP does. The call stays
- * unresolved when the class is not known, or when the method may come from somewhere the index does not follow
- * (a trait, `__call`).
+ * A method is looked up in the class the receiver names, then in its parents, the way PHP does. A class outside the
+ * analyzed files makes the call `external`. The call stays unresolved when the receiver's class is not known, or
+ * when the method may come from somewhere the index does not follow (a trait, `__call`, an interface's implementers).
  */
 final readonly class CallResolver
 {
@@ -50,6 +50,10 @@ final readonly class CallResolver
         return null;
     }
 
+    /**
+     * The method a call reaches, looked up through the parents of the receiver's class. When the lookup leaves
+     * the analyzed files, the method is somewhere in that outside class or above it: an `external` node.
+     */
     private function method(PendingCall $call): ?string
     {
         $class = $this->receiverClass($call);
@@ -58,21 +62,44 @@ final readonly class CallResolver
             return null;
         }
 
-        foreach ($this->index->lineage($class) as $info) {
-            if (!$info->isClass) {
+        $method = strtolower($call->method);
+        $seen = [];
+
+        while ($class !== null && !isset($seen[strtolower($class)])) {
+            $seen[strtolower($class)] = true;
+            $info = $this->index->class($class);
+
+            if ($info === null) {
+                return $this->external($class, $call->method);
+            }
+
+            if (isset($info->methods[$method])) {
+                return $info->methods[$method];
+            }
+
+            // An interface, trait or enum of the project: its methods are not nodes, and an interface does not
+            // say which class runs the call.
+            if (!$info->isClass || $info->open) {
                 return null;
             }
 
-            if (isset($info->methods[$call->method])) {
-                return $info->methods[$call->method];
-            }
-
-            if ($info->open) {
-                return null;
-            }
+            $class = $info->parent;
         }
 
         return null;
+    }
+
+    private function external(string $class, string $method): string
+    {
+        $class = ltrim($class, '\\');
+        // PHP names are case-insensitive, so `Carbon::NOW()` and `Carbon::now()` are one target.
+        $id = strtolower('external:' . $class . '::' . $method);
+
+        if (!$this->graph->hasNode($id)) {
+            $this->graph->addNode(new Node($id, NodeType::External, $class . '::' . $method));
+        }
+
+        return $id;
     }
 
     /** The class whose methods the call can reach, when the receiver tells: the base, then each property read. */

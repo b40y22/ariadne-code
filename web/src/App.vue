@@ -10,7 +10,7 @@ import { usePaneSplit } from './composables/usePaneSplit'
 import { useReplay } from './composables/useReplay'
 import { layout } from './graph/layout'
 import { nodeAtLine } from './graph/lookup'
-import { toClassMap } from './graph/toFlow'
+import { LOOSE_TYPES, toClassMap } from './graph/toFlow'
 import { countBuiltins, layoutEdges, toMethodFlow } from './graph/toMethodFlow'
 import type { Graph } from './graph/types'
 import { SAMPLE_CODE, SAMPLE_FILE } from './sample'
@@ -32,12 +32,12 @@ const graphView = ref<InstanceType<typeof GraphView>>()
 const replay = useReplay({ view, nodes, edges, selected })
 const { path, flowData, visited, shownEdges, choices, atEnd, takeExit, back, restart, jump } = replay
 
-// Unresolved calls are hidden on the class map until asked for: there are often more of them than real nodes.
+// Unresolved and external calls are hidden on the class map until asked for: there are often more of them than real nodes.
 const UNRESOLVED_KEY = 'ariadne:show-unresolved'
 const showUnresolved = ref(readStored(UNRESOLVED_KEY) === '1')
 const BUILTINS_KEY = 'ariadne:show-builtins'
 const showBuiltins = ref(readStored(BUILTINS_KEY) === '1')
-const unresolvedCount = computed(() => graph.value?.nodes.filter((node) => node.type === 'unresolved').length ?? 0)
+const unresolvedCount = computed(() => graph.value?.nodes.filter((node) => LOOSE_TYPES.has(node.type)).length ?? 0)
 
 onMounted(() => window.addEventListener('hashchange', onHashChange))
 onBeforeUnmount(() => window.removeEventListener('hashchange', onHashChange))
@@ -274,10 +274,10 @@ onMounted(run)
           class="button toggle"
           :aria-pressed="showUnresolved"
           :disabled="graph === null"
-          title="Calls the analyzer could not trace to a declaration: builtins and calls on other objects"
+          title="Calls into code outside the analyzed files (libraries, the framework) and calls the analyzer could not trace to a declaration"
           @click="toggleUnresolved"
         >
-          Unresolved ({{ unresolvedCount }})
+          External &amp; unresolved ({{ unresolvedCount }})
         </button>
       </template>
       <span class="file">{{ fileName }}</span>

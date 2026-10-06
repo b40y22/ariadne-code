@@ -103,7 +103,7 @@ final class PhpAnalyzerTest extends TestCase
     }
 
     #[Test]
-    public function calls_that_leave_the_class_stay_unresolved(): void
+    public function a_class_outside_the_analyzed_files_is_external_and_an_unknown_receiver_unresolved(): void
     {
         $graph = Analyzed::graph(<<<'PHP'
             namespace N;
@@ -117,18 +117,27 @@ final class PhpAnalyzerTest extends TestCase
             PHP);
 
         self::assertSame([
-            'N\A::a -> unresolved:Other\Foo::run',
+            'N\A::a -> external:other\foo::run',
             'N\A::a -> unresolved:parent::run',
             'N\A::a -> unresolved:$x->go',
         ], $this->calls($graph));
     }
 
     #[Test]
-    public function inherited_methods_are_not_guessed(): void
+    public function a_method_missing_from_a_class_with_an_outside_parent_is_external_to_that_parent(): void
     {
         $graph = Analyzed::graph('class A extends B { function a() { $this->fromParent(); } }');
 
-        self::assertSame(['A::a -> unresolved:$this->fromParent'], $this->calls($graph));
+        self::assertSame(['A::a -> external:b::fromparent'], $this->calls($graph));
+        self::assertSame('B::fromParent', array_values(array_filter($graph->nodes(), static fn($node) => $node->type === NodeType::External))[0]->name);
+    }
+
+    #[Test]
+    public function a_method_missing_from_a_class_without_a_parent_stays_unresolved(): void
+    {
+        $graph = Analyzed::graph('class A { function a() { $this->nowhere(); } }');
+
+        self::assertSame(['A::a -> unresolved:$this->nowhere'], $this->calls($graph));
     }
 
     #[Test]

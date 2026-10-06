@@ -216,6 +216,22 @@ final class ProjectTest extends TestCase
     }
 
     #[Test]
+    public function a_lookup_that_leaves_the_project_ends_in_the_first_outside_class(): void
+    {
+        $graph = Analyzed::project([
+            'User.php' => "namespace App;\nuse Illuminate\\Database\\Eloquent\\Model;\nclass User extends Model { function name() {} }",
+            'Job.php' => "namespace App;\nuse Illuminate\\Http\\Request;\nclass Job { function run(Request \$r, User \$u) { \$r->input('id'); \$u->name(); User::where('id', 1); User::WHERE('id', 2); } }",
+        ]);
+
+        self::assertSame([
+            'method:App\\Job::run -> external:illuminate\\http\\request::input',
+            'method:App\\Job::run -> method:App\\User::name',
+            'method:App\\Job::run -> external:illuminate\\database\\eloquent\\model::where',
+            'method:App\\Job::run -> external:illuminate\\database\\eloquent\\model::where',
+        ], Analyzed::calls($graph));
+    }
+
+    #[Test]
     public function a_method_that_may_come_from_a_trait_or_magic_stays_unresolved(): void
     {
         $graph = Analyzed::project([

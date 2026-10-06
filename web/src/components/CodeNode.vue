@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { Handle, Position } from '@vue-flow/core'
-import { Box, Braces, CircleHelp, FileCode, SquareFunction } from 'lucide-vue-next'
+import { Box, Braces, CircleHelp, FileCode, Package, SquareFunction } from 'lucide-vue-next'
 import { computed } from 'vue'
 
 import type { CodeNodeData } from '../graph/toFlow'
 
 const props = defineProps<{ data: CodeNodeData }>()
 
-const icon = computed(() => ({ class: Box, method: Braces, function: SquareFunction, script: FileCode, unresolved: CircleHelp })[props.data.kind])
+const icon = computed(() => ({ class: Box, method: Braces, function: SquareFunction, script: FileCode, unresolved: CircleHelp, external: Package })[props.data.kind])
 </script>
 
 <template>
@@ -89,12 +89,19 @@ const icon = computed(() => ({ class: Box, method: Braces, function: SquareFunct
   background: transparent;
 }
 
-.code-node.kind-unresolved .icon {
+.code-node.kind-external {
+  border-color: rgba(255, 255, 255, 0.14);
+  background: transparent;
+}
+
+.code-node.kind-unresolved .icon,
+.code-node.kind-external .icon {
   background: rgba(255, 255, 255, 0.05);
   color: var(--muted);
 }
 
-.code-node.kind-unresolved .title {
+.code-node.kind-unresolved .title,
+.code-node.kind-external .title {
   color: var(--muted);
   font-weight: 500;
 }
@@ -124,7 +131,8 @@ const icon = computed(() => ({ class: Box, method: Braces, function: SquareFunct
 
 /* Handles stay in the DOM (edge routing measures them) but unused ones are invisible. */
 .code-node.kind-class .vue-flow__handle-left,
-.code-node.kind-unresolved .vue-flow__handle-right {
+.code-node.kind-unresolved .vue-flow__handle-right,
+.code-node.kind-external .vue-flow__handle-right {
   opacity: 0;
 }
 </style>

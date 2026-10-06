@@ -6,6 +6,7 @@ export type NodeType =
   | 'function'
   | 'script'
   | 'unresolved'
+  | 'external'
   | 'start'
   | 'end'
   | 'call'

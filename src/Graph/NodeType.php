@@ -18,6 +18,12 @@ enum NodeType: string
     /** A call target that static analysis could not map to a known declaration. */
     case Unresolved = 'unresolved';
 
+    /**
+     * A method of a class whose code is not among the analyzed files (a library, the framework): the target is
+     * known by name, but there is nothing to show inside it.
+     */
+    case External = 'external';
+
     // Method flow: nodes below belong to one method (see Node::$parent).
     case Start = 'start';
     case End = 'end';

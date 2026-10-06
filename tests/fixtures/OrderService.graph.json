@@ -253,18 +253,18 @@
             "parent": "method:Fixtures\\OrderService::roundMoney"
         },
         {
-            "id": "unresolved:$this->log",
-            "type": "unresolved",
-            "name": "$this->log",
+            "id": "external:fixtures\\baseservice::log",
+            "type": "external",
+            "name": "Fixtures\\BaseService::log",
             "file": null,
             "lineStart": null,
             "lineEnd": null,
             "parent": null
         },
         {
-            "id": "unresolved:$this->orders->save",
-            "type": "unresolved",
-            "name": "$this->orders->save",
+            "id": "external:fixtures\\orderrepository::save",
+            "type": "external",
+            "name": "Fixtures\\OrderRepository::save",
             "file": null,
             "lineStart": null,
             "lineEnd": null,
@@ -467,14 +467,14 @@
         },
         {
             "from": "method:Fixtures\\OrderService::createOrder",
-            "to": "unresolved:$this->log",
+            "to": "external:fixtures\\baseservice::log",
             "type": "calls",
             "line": 15,
             "label": null
         },
         {
             "from": "method:Fixtures\\OrderService::createOrder",
-            "to": "unresolved:$this->orders->save",
+            "to": "external:fixtures\\orderrepository::save",
             "type": "calls",
             "line": 17,
             "label": null

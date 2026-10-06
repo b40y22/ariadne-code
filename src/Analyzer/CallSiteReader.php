@@ -63,7 +63,7 @@ final readonly class CallSiteReader
             label: $label,
             qualifiedLabel: $qualified ?? $label,
             receiver: $receiver,
-            method: !$node instanceof FuncCall && $node->name instanceof Identifier ? $node->name->toLowerString() : null,
+            method: !$node instanceof FuncCall && $node->name instanceof Identifier ? $node->name->toString() : null,
             line: $node->getStartLine(),
             functions: $functions,
             quiet: $functions !== [] && QuietFunctions::contains($functions[array_key_last($functions)]),
