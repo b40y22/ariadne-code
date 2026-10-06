@@ -70,6 +70,8 @@ docker compose run --rm php php bin/ariadne analyze path/to/YourClass.php
 |--------------|----------------------------------------------------------------------|
 | `class`      | A named class                                                        |
 | `method`     | A method declared in a class                                         |
+| `function`   | A function declared outside any class                                |
+| `script`     | The code of a file that sits outside every class and function: what runs when the file is executed |
 | `unresolved` | A call target that static analysis cannot map to a known declaration |
 | flow nodes   | `start`, `end`, `call`, `condition`, `loop`, `try`, `catch`, `finally`, `return`, `throw`: the control flow of one method, linked to it through `parent` |
 
@@ -105,9 +107,14 @@ Deliberate simplifications (the graph never claims more than it knows):
 - Exceptions raised by called methods are unknown, so a `try` links to each of its `catch` blocks.
 - `finally` is reached on normal completion only (not after `return`/`break` inside `try`).
 - A closure or arrow function passed straight to a method or static call (`DB::transaction(fn () => ...)`) is a callback: its calls follow that call as plain steps, entered by a dotted `callback` edge. The analyzer cannot know whether the callee runs it, so the edge says "callback", not "runs". `return` and `throw` inside it never leave the method. Closures anywhere else add no steps.
+- `exit`/`die` end the flow like `return`. `include`/`require` are a step, but the included file is not followed, and neither are calls into other files.
 - Code after an unconditional `return`/`throw`/`break`/`continue` is unreachable and left out.
 
-What currently resolves: `$this->method()`, `self::method()` and `static::method()` within the same class, case-insensitively. Everything else (calls on other objects, inherited methods, `parent::`, dynamic names such as `$this->$name()`) becomes an `unresolved` node, so the graph never asserts something the code does not prove.
+Plain PHP scripts work too. A function is a node with its own flow, and the top-level code of a file becomes a `script` node named after the file, so a legacy page that is nothing but `require`, `if` and function calls still has a graph:
+
+![Flow of a legacy-style script](docs/screenshot-script.png)
+
+What currently resolves: `$this->method()`, `self::method()` and `static::method()` within the same class, and calls to functions declared in the same file (also namespaced, imported with `use function`, or falling back to the global one), case-insensitively. Everything else (calls on other objects, inherited methods, `parent::`, dynamic names such as `$this->$name()`) becomes an `unresolved` node, so the graph never asserts something the code does not prove.
 
 ## Development
 
