@@ -107,6 +107,7 @@ Deliberate simplifications (the graph never claims more than it knows):
 - Exceptions raised by called methods are unknown, so a `try` links to each of its `catch` blocks.
 - `finally` is reached on normal completion only (not after `return`/`break` inside `try`).
 - A closure or arrow function passed straight to a method or static call (`DB::transaction(fn () => ...)`) is a callback: its calls follow that call as plain steps, entered by a dotted `callback` edge. The analyzer cannot know whether the callee runs it, so the edge says "callback", not "runs". `return` and `throw` inside it never leave the method. Closures anywhere else add no steps.
+- A `return` or `throw` whose expression is itself a call is a bare keyword: the call is already the step just before it, and repeating its text would show the same line twice. `throw new E()` and `return $x` keep their expression, so the exception type stays visible.
 - `exit`/`die` end the flow like `return`. `include`/`require` are a step, but the included file is not followed, and neither are calls into other files.
 - Code after an unconditional `return`/`throw`/`break`/`continue` is unreachable and left out.
 
