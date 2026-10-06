@@ -13,6 +13,9 @@ final class ApplicationTest extends TestCase
 {
     private const FIXTURE = __DIR__ . '/../fixtures/OrderService.php';
 
+    /** @var list<string> */
+    private array $cleanup = [];
+
     #[Test]
     public function it_prints_the_graph_as_json(): void
     {
@@ -58,6 +61,63 @@ final class ApplicationTest extends TestCase
         self::assertSame(1, $code);
         self::assertSame('', $stdout);
         self::assertStringContainsString($path, $stderr);
+    }
+
+    #[Test]
+    public function it_analyzes_a_directory_as_one_project_without_vendor(): void
+    {
+        $dir = $this->tree([
+            'src/Repo.php' => '<?php class Repo { function save() {} }',
+            'src/Job.php' => '<?php class Job { function run(Repo $r) { $r->save(); } }',
+            'src/vendor/Lib.php' => '<?php class Lib {}',
+            'src/notes.txt' => 'not php',
+        ]);
+
+        [$code, $stdout, $stderr] = $this->runCli(['ariadne', 'analyze', $dir . '/src/']);
+
+        self::assertSame(0, $code);
+        self::assertSame('', $stderr);
+        self::assertStringContainsString('"to": "method:Repo::save"', $stdout);
+        self::assertStringContainsString('"file": "' . $dir . '/src/Job.php"', $stdout);
+        self::assertStringNotContainsString('class:Lib', $stdout);
+    }
+
+    #[Test]
+    public function it_reports_a_broken_file_and_analyzes_the_rest(): void
+    {
+        $dir = $this->tree(['A.php' => '<?php class A {}', 'B.php' => '<?php class {']);
+
+        [$code, $stdout, $stderr] = $this->runCli(['ariadne', 'analyze', $dir]);
+
+        self::assertSame(0, $code);
+        self::assertStringContainsString('B.php: Syntax error', $stderr);
+        self::assertStringContainsString('class:A', $stdout);
+    }
+
+    /**
+     * A temporary directory with the given files, removed after the test.
+     *
+     * @param array<string, string> $files relative path => content
+     */
+    private function tree(array $files): string
+    {
+        $dir = sys_get_temp_dir() . '/ariadne-' . bin2hex(random_bytes(4));
+
+        foreach ($files as $path => $content) {
+            @mkdir(dirname($dir . '/' . $path), 0o777, true);
+            file_put_contents($dir . '/' . $path, $content);
+        }
+
+        $this->cleanup[] = $dir;
+
+        return $dir;
+    }
+
+    protected function tearDown(): void
+    {
+        foreach ($this->cleanup as $dir) {
+            exec('rm -rf ' . escapeshellarg($dir));
+        }
     }
 
     /**
