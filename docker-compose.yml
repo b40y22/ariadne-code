@@ -9,10 +9,16 @@ services:
     build: .
     user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
     command: php -S 0.0.0.0:8080 -t public public/index.php
+    environment:
+      # Project mode: the code to explore, mounted read-only (`make up PROJECT=path`); the demo project otherwise.
+      ARIADNE_PROJECT: /project
+      ARIADNE_PROJECT_NAME: ${PROJECT_NAME:-demo}
+    # Bound to this machine only: in project mode the API serves the source code of the mounted directory.
     ports:
-      - "${API_PORT:-8090}:8080"
+      - "127.0.0.1:${API_PORT:-8090}:8080"
     volumes:
       - .:/app
+      - ${PROJECT_DIR:-./tests/fixtures/project}:/project:ro
 
   web:
     image: node:22-alpine
@@ -23,7 +29,7 @@ services:
       API_TARGET: http://api:8080
     command: npm run dev
     ports:
-      - "${WEB_PORT:-5180}:5173"
+      - "127.0.0.1:${WEB_PORT:-5180}:5173"
     volumes:
       - .:/app
     depends_on:

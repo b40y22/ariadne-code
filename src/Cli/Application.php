@@ -6,19 +6,12 @@ namespace Ariadne\Cli;
 
 use Ariadne\Analyzer\AnalysisException;
 use Ariadne\Analyzer\PhpAnalyzer;
-use FilesystemIterator;
+use Ariadne\Project\PhpFiles;
 use JsonException;
-use RecursiveCallbackFilterIterator;
-use RecursiveDirectoryIterator;
-use RecursiveIteratorIterator;
-use SplFileInfo;
 
 final readonly class Application
 {
     private const string USAGE = "Usage: ariadne analyze <file.php|directory>...\n";
-
-    /** Directories that hold someone else's code or none at all. */
-    private const array SKIPPED_DIRECTORIES = ['vendor', 'node_modules', '.git'];
 
     public function __construct(private PhpAnalyzer $analyzer) {}
 
@@ -46,7 +39,7 @@ final readonly class Application
         $files = [];
 
         foreach ($paths as $path) {
-            foreach (is_dir($path) ? self::phpFiles($path) : [$path] as $file) {
+            foreach (is_dir($path) ? PhpFiles::under($path) : [$path] as $file) {
                 $code = is_file($file) ? file_get_contents($file) : false;
 
                 if ($code === false) {
@@ -75,33 +68,5 @@ final readonly class Application
         ) . "\n");
 
         return 0;
-    }
-
-    /**
-     * The `.php` files under a directory, in a stable order so the same tree always gives the same graph.
-     *
-     * @return list<string>
-     */
-    private static function phpFiles(string $directory): array
-    {
-        $directory = rtrim($directory, '/');
-        $iterator = new RecursiveIteratorIterator(new RecursiveCallbackFilterIterator(
-            new RecursiveDirectoryIterator($directory, FilesystemIterator::SKIP_DOTS),
-            static fn(SplFileInfo $file): bool => $file->isDir()
-                ? !in_array($file->getFilename(), self::SKIPPED_DIRECTORIES, true)
-                : strtolower($file->getExtension()) === 'php',
-        ));
-
-        $files = [];
-
-        foreach ($iterator as $file) {
-            if ($file instanceof SplFileInfo) {
-                $files[] = $file->getPathname();
-            }
-        }
-
-        sort($files, SORT_STRING);
-
-        return $files;
     }
 }

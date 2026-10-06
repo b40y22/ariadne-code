@@ -25,8 +25,9 @@ fix:
 
 check: lint stan test
 
+# `make up PROJECT=path/to/code` opens a directory in project mode; plain `make up` opens the demo project.
 up:
-	docker compose up -d api web
+	$(if $(PROJECT),PROJECT_DIR=$(abspath $(PROJECT)) PROJECT_NAME=$(notdir $(abspath $(PROJECT)))) docker compose up -d api web
 	@echo "UI: http://localhost:$${WEB_PORT:-5180}   API: http://localhost:$${API_PORT:-8090}"
 
 down:
