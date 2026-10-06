@@ -81,3 +81,7 @@ On a 590-file application the whole graph is 21 MB of JSON, two thirds of it met
 
 Hundreds of classes in one picture help nobody, so the UI shows one unit (a class, function or script) with everything that calls into it and everything it calls, and the classes of those methods with only the methods involved. Calls between two neighbours are left out, so every edge on screen touches the unit. Moving the focus is the "expand" step; it opens on the unit with the most calls, which is usually where a newcomer should start.
 
+### ADR-14: A call step knows its target from the analyzer
+
+Stepping from a call in a flow into the method it calls needs to know which `calls` edge belongs to which step. The UI could match them by line and name, but one line often holds several calls (`$this->save($this->build())`), and names are printed differently on the two sides, so it would have to guess, which ADR-3 rules out. The analyzer knows for certain: when `MethodFlowBuilder` turns a call into a step, it marks the call's AST node with the step id; when the call graph records the same AST node, it carries the mark along, and `CallResolver` draws a `target` edge from the step to the very node the `calls` edge reaches. The edge belongs to the flow (it starts at a flow node), so the API serves it with the flow and the class map never sees it. A step opens a flow only when its target has one; `external` and `unresolved` targets stay where they are.
+

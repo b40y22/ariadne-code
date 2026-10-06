@@ -49,6 +49,8 @@ Calls into code outside the file (`external`) and calls the analyzer cannot trac
 
 **Execution replay:** below a method flow, the *Execution replay* panel walks through the method step by step. **→** takes the next step (or pick a branch when the code forks), **←** goes back, and a click on a log entry jumps to that step. The path walked so far lights up in the graph, and the current step is highlighted in the source code. It is static: no code runs, you choose the branches.
 
+**Stepping into a call:** a call step marked **↘** reaches a method or function of the analyzed code. Double-click it (or select it and press **Open call ↘**) to open the flow of that method; in project mode the editor switches to its file. **← name()** in the toolbar goes back the way you came, one call at a time. During a replay the current step is the selected one, so **Open call** works like a debugger's *step into*. Calls that are unresolved or end outside the analyzed files have no mark and open nothing.
+
 ![Execution replay: one pass through the loop, then out through DB::transaction to the end](docs/replay.gif)
 
 ### Project mode
@@ -106,6 +108,7 @@ Directories are read recursively for `.php` files, skipping `vendor`, `node_modu
 | `contains` | A class declares a method                                                |
 | `calls`    | A method calls another; `line` is the call site                          |
 | `flow`     | Execution order inside a method; `label` names the branch taken         |
+| `target`   | From a call step of a flow to what it calls: the same target as the method's `calls` edge for that call |
 
 ### Method flow
 
@@ -183,7 +186,7 @@ The project targets PHP 8.5; the Docker image has it, so nothing needs installin
 - [x] Type-aware call resolution: typed, promoted, docblock and constructor-assigned properties, typed parameters
 - [x] Multiple files in the analyzer and the command line, with `external` targets
 - [x] Multiple files in the web UI: project mode with a focused map and the editor following the selection
-- [ ] From a call step in a flow to the flow of the method it calls, with a way back
+- [x] From a call step in a flow to the flow of the method it calls, with a way back
 - [ ] Return types of methods (`$repo->find()->save()`) and local variables assigned `new Foo()`
 - [x] Web UI: class map with drag, zoom, auto-layout, resizable class containers, saved layout, linked to the source code
 - [x] Web UI: method flow view
