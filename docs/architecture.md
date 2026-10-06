@@ -13,12 +13,13 @@ Consumers (CLI, a future web UI, an AI layer) depend only on the Code Graph, nev
 ```
 src/Graph/     Language-agnostic model: Node, Edge, Graph
 src/Analyzer/  PHP-specific analysis: AST → Graph
+src/Project/   A directory on disk as one project: its PHP files, a cached analysis split into map and flows
 src/Cli/       Entry point: arguments, stdout/stderr, exit codes
-src/Http/      Entry point: the `POST /api/analyze` endpoint, free of globals so it is tested without a server
+src/Http/      Entry point: `POST /api/analyze` and the project endpoints, free of globals so they are tested without a server
 web/           The UI: a Vue app that only ever reads the Code Graph JSON
 ```
 
-Dependencies point one way only: `Cli`/`Http → Analyzer → Graph`. `Graph` knows nothing about PHP or the console.
+Dependencies point one way only: `Cli`/`Http → Project → Analyzer → Graph`. `Graph` knows nothing about PHP or the console.
 
 ## Decisions
 
@@ -71,3 +72,12 @@ Resolving `$this->repo->save()` needs the class of `$this->repo`. The analyzer t
 ### ADR-12: Outside code is `external`, not unknown
 
 Most calls on a real application go to the framework and libraries (`Carbon::now()`, `DB::table()`, a model's `User::where()`), which are not analyzed. Leaving them `unresolved` mixed "the analyzer does not know" with "the analyzer knows, the code is elsewhere", and the first is what a reader needs to notice. When the method lookup reaches a class that is not among the analyzed files, the call ends in an `external` node named after that class, the first point where the lookup left the project, since the method may be declared there or above it. A lookup that stays inside the project and finds nothing remains `unresolved`, and so does one that passes a class using a trait or `__call`, or reaches an interface of the project, because the method could come from code the index does not follow. The UI hides `external` and `unresolved` nodes together on the class map (ADR-10).
+
+### ADR-13: Project mode reads a mounted directory, and the UI focuses on one class
+
+A project has to reach the analyzer somehow. Uploading it from the browser would send someone's whole codebase over HTTP and keep it in memory or on disk; the privacy note in the README already says nobody wants that. So the API reads a directory mounted read-only into its container, and the browser only asks for what it shows. The source endpoint answers only for paths in the project's own list, so no request can reach another file, and both ports are bound to `127.0.0.1` because the API now serves code.
+
+On a 590-file application the whole graph is 21 MB of JSON, two thirds of it method flows, and a reader opens a handful of those. The API splits it: the map (declarations and calls, 6 MB, gzip makes it a fraction) in one request, each flow on demand. The analysis is cached in a file keyed by the path, modification time and size of every project file and of the analyzer's own code, so a request after an edit re-analyzes and the rest take milliseconds; the cache holds only strings and arrays and is read with `allowed_classes: false`.
+
+Hundreds of classes in one picture help nobody, so the UI shows one unit (a class, function or script) with everything that calls into it and everything it calls, and the classes of those methods with only the methods involved. Calls between two neighbours are left out, so every edge on screen touches the unit. Moving the focus is the "expand" step; it opens on the unit with the most calls, which is usually where a newcomer should start.
+

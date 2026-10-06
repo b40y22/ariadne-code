@@ -8,7 +8,7 @@ Static analyzer that turns PHP source into a language-agnostic **Code Graph**: t
 
 ![Ariadne Code: class map next to the source code](docs/screenshot.png)
 
-> **Status: 0.1, with multi-file analysis on `main`.** Classes, functions and plain scripts, the control flow of every method, and a step-by-step replay of it. The command line analyzes a whole directory and follows calls across files; the web UI still opens one file at a time. See the [changelog](CHANGELOG.md) and the [roadmap](#roadmap).
+> **Status: 0.1, with multi-file analysis on `main`.** Classes, functions and plain scripts, the control flow of every method, and a step-by-step replay of it. A whole directory is analyzed as one project, with calls followed across files, on the command line and in the web UI. See the [changelog](CHANGELOG.md) and the [roadmap](#roadmap).
 
 ```
 PHP source → AST (nikic/php-parser) → Analyzer → Code Graph (JSON) → visualization
@@ -25,6 +25,12 @@ make build
 make install
 make web-install
 make up    # UI on http://localhost:5180, API on http://localhost:8090
+```
+
+To explore your own project, start it with the directory and open the page in project mode:
+
+```bash
+make up PROJECT=~/code/shop/app    # then http://localhost:5180/?project
 ```
 
 ### Web UI
@@ -45,7 +51,22 @@ Calls into code outside the file (`external`) and calls the analyzer cannot trac
 
 ![Execution replay: one pass through the loop, then out through DB::transaction to the end](docs/replay.gif)
 
-The API is a single endpoint, `POST /api/analyze` with `{"code": "...", "file": "A.php"}`, answering with the Code Graph JSON. Submitted code is only parsed, never executed or stored, and requests are limited to 1 MB.
+### Project mode
+
+`http://localhost:5180/?project` explores the directory the API was started with (`make up PROJECT=path`, or the small demo project in [`tests/fixtures/project`](tests/fixtures/project) by default). A project of hundreds of classes is unreadable as one picture, so the map is **focused on one class** at a time: the class with all its methods, every method that calls into it and every method it calls, with their classes. It opens on the class with the most calls in and out; pick another in the box at the top, or select a block of a neighbouring class and press **Focus** to move there. Double-clicking a method of any class opens its flow. The editor follows the selection, so clicking a method of another class shows that file. The focus and the open method are in the address, so a link brings a colleague to the same place.
+
+![Project mode: the map around OrderService, with BaseRepository::create selected and its file in the editor](docs/screenshot-project.png)
+
+The project is mounted read-only, and the UI and API listen on `127.0.0.1` only, since the API serves the code of that directory. The first request analyzes it (about 1.5 s for 590 files); later requests read a cache that is renewed when a file changes, so **Reload** after an edit picks it up.
+
+### API
+
+| Endpoint | Answer |
+|---|---|
+| `POST /api/analyze` with `{"code": "...", "file": "A.php"}` | The Code Graph of that code. It is only parsed, never executed or stored; 1 MB at most. |
+| `GET /api/project` | The project's name, files, the files that did not parse, and the map of its graph (no flows) |
+| `GET /api/project/flow?id=…` | The flow of one method, function or script |
+| `GET /api/project/source?file=…` | The code of one file, only for paths in the project's list of files |
 
 `make demo` analyzes the demo class [`tests/fixtures/OrderShowcase.php`](tests/fixtures/OrderShowcase.php) on the command line and prints its graph as JSON. To analyze your own code, give it files or directories; everything given is one project, so calls are followed from file to file:
 
@@ -161,7 +182,8 @@ The project targets PHP 8.5; the Docker image has it, so nothing needs installin
 - [ ] Interfaces, traits, enums, inheritance and dependency edges
 - [x] Type-aware call resolution: typed, promoted, docblock and constructor-assigned properties, typed parameters
 - [x] Multiple files in the analyzer and the command line, with `external` targets
-- [ ] Multiple files in the web UI: open a directory, code of each file next to the graph
+- [x] Multiple files in the web UI: project mode with a focused map and the editor following the selection
+- [ ] From a call step in a flow to the flow of the method it calls, with a way back
 - [ ] Return types of methods (`$repo->find()->save()`) and local variables assigned `new Foo()`
 - [x] Web UI: class map with drag, zoom, auto-layout, resizable class containers, saved layout, linked to the source code
 - [x] Web UI: method flow view

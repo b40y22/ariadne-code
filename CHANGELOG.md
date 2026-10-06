@@ -10,9 +10,16 @@ All notable changes are listed here. The format follows [Keep a Changelog](https
 - **Inheritance.** A method is looked up in the class, then its parents: `$this->m()` and `static::m()` reach an inherited method, and `parent::m()` resolves.
 - **Typed receivers.** Calls on typed and promoted properties, `@var` docblocks, legacy properties assigned a typed constructor parameter or a `new` object, typed parameters never reassigned, `(new Foo())->m()`, and chains of such properties.
 - **`external` nodes** for calls into classes outside the analyzed files (libraries, the framework), shown and hidden on the class map together with unresolved calls.
+- **Project mode** (`make up PROJECT=path`, then `/?project`): the API reads a mounted directory, serves its map, flows and sources on demand, and caches the analysis until a file changes. The UI focuses the map on one class with its callers and callees, and the editor follows the selection across files. A small demo project is the default.
+
+### Fixed
+
+- Selecting a method far outside the view now brings it into view; the position of a method inside its class was taken as a position on the canvas.
+- Hiding unresolved calls on a large map no longer leaves the view pointing at empty space.
 
 ### Changed
 
+- The UI and API listen on `127.0.0.1` only.
 - A call into a class that is not among the analyzed files is now `external` instead of `unresolved`, also when one file is analyzed alone.
 
 ## [0.1.0] - 2026-10-06
