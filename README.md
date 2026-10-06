@@ -30,7 +30,7 @@ make up    # UI on http://localhost:5180, API on http://localhost:8090
 
 The page shows the class map next to the source code. Click a node to jump to its code; move the cursor in the editor to highlight the matching node. Use **Open .php** to analyze your own file.
 
-Classes are containers that hold their methods and can be resized; drag any block and the layout is remembered per file.
+Calls the analyzer cannot trace to a declaration (builtins, calls on other objects) are hidden on the map by default, because there are often more of them than real nodes; the **Unresolved (N)** button shows them. Classes are containers that hold their methods and can be resized; drag any block and the layout is remembered per file.
 
 **Method flow:** double-click a method (or select it and press **Show flow**) to see how it runs: its calls in execution order, `if` branches (`true`/`false`), loops, `try`/`catch`, `return` and `throw`. A flow can be shared by link, e.g. `http://localhost:5180/#method=method:App\\OrderService::createOrder`.
 
