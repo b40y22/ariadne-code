@@ -19,6 +19,7 @@ const edges = ref<Edge[]>([])
 const selected = ref<{ id: string; reveal: boolean } | null>(null)
 const error = ref<string | null>(null)
 const loading = ref(false)
+const graphView = ref<InstanceType<typeof GraphView>>()
 
 const highlight = computed<Highlight | null>(() => {
   const node = graph.value?.nodes.find((candidate) => candidate.id === selected.value?.id)
@@ -87,13 +88,23 @@ onMounted(run)
       <button type="button" class="button primary" :disabled="loading" @click="run">
         {{ loading ? 'Analyzing…' : 'Analyze' }}
       </button>
+      <button type="button" class="button" :disabled="graph === null" @click="graphView?.resetLayout()">
+        Reset layout
+      </button>
       <span class="file">{{ fileName }}</span>
       <span v-if="error" class="error" role="alert">{{ error }}</span>
     </header>
 
     <main class="panes">
       <section class="pane graph">
-        <GraphView :nodes="nodes" :edges="edges" :selected-id="selected?.id ?? null" @select="onGraphSelect" />
+        <GraphView
+          ref="graphView"
+          :nodes="nodes"
+          :edges="edges"
+          :selected-id="selected?.id ?? null"
+          :file-name="fileName"
+          @select="onGraphSelect"
+        />
       </section>
       <section class="pane">
         <CodeEditor v-model="code" :highlight="highlight" @cursor-line="onCursorLine" />
