@@ -174,7 +174,7 @@
         {
             "id": "flow:method:Fixtures\\OrderService::calculateTotal#2",
             "type": "call",
-            "name": "self::roundMoney",
+            "name": "array_sum",
             "file": "OrderService.php",
             "lineStart": 29,
             "lineEnd": 29,
@@ -182,6 +182,15 @@
         },
         {
             "id": "flow:method:Fixtures\\OrderService::calculateTotal#3",
+            "type": "call",
+            "name": "self::roundMoney",
+            "file": "OrderService.php",
+            "lineStart": 29,
+            "lineEnd": 29,
+            "parent": "method:Fixtures\\OrderService::calculateTotal"
+        },
+        {
+            "id": "flow:method:Fixtures\\OrderService::calculateTotal#4",
             "type": "return",
             "name": "return self::roundMoney(array_sum($data))",
             "file": "OrderService.php",
@@ -190,7 +199,7 @@
             "parent": "method:Fixtures\\OrderService::calculateTotal"
         },
         {
-            "id": "flow:method:Fixtures\\OrderService::calculateTotal#4",
+            "id": "flow:method:Fixtures\\OrderService::calculateTotal#5",
             "type": "end",
             "name": "end",
             "file": "OrderService.php",
@@ -218,6 +227,15 @@
         },
         {
             "id": "flow:method:Fixtures\\OrderService::roundMoney#2",
+            "type": "call",
+            "name": "round",
+            "file": "OrderService.php",
+            "lineStart": 34,
+            "lineEnd": 34,
+            "parent": "method:Fixtures\\OrderService::roundMoney"
+        },
+        {
+            "id": "flow:method:Fixtures\\OrderService::roundMoney#3",
             "type": "return",
             "name": "return round($value, 2)",
             "file": "OrderService.php",
@@ -226,7 +244,7 @@
             "parent": "method:Fixtures\\OrderService::roundMoney"
         },
         {
-            "id": "flow:method:Fixtures\\OrderService::roundMoney#3",
+            "id": "flow:method:Fixtures\\OrderService::roundMoney#4",
             "type": "end",
             "name": "end",
             "file": "OrderService.php",
@@ -247,6 +265,24 @@
             "id": "unresolved:$this->orders->save",
             "type": "unresolved",
             "name": "$this->orders->save",
+            "file": null,
+            "lineStart": null,
+            "lineEnd": null,
+            "parent": null
+        },
+        {
+            "id": "unresolved:array_sum",
+            "type": "unresolved",
+            "name": "array_sum",
+            "file": null,
+            "lineStart": null,
+            "lineEnd": null,
+            "parent": null
+        },
+        {
+            "id": "unresolved:round",
+            "type": "unresolved",
+            "name": "round",
             "file": null,
             "lineStart": null,
             "lineEnd": null,
@@ -381,6 +417,13 @@
             "label": null
         },
         {
+            "from": "flow:method:Fixtures\\OrderService::calculateTotal#4",
+            "to": "flow:method:Fixtures\\OrderService::calculateTotal#5",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
             "from": "class:Fixtures\\OrderService",
             "to": "method:Fixtures\\OrderService::roundMoney",
             "type": "contains",
@@ -397,6 +440,13 @@
         {
             "from": "flow:method:Fixtures\\OrderService::roundMoney#2",
             "to": "flow:method:Fixtures\\OrderService::roundMoney#3",
+            "type": "flow",
+            "line": null,
+            "label": null
+        },
+        {
+            "from": "flow:method:Fixtures\\OrderService::roundMoney#3",
+            "to": "flow:method:Fixtures\\OrderService::roundMoney#4",
             "type": "flow",
             "line": null,
             "label": null
@@ -434,6 +484,20 @@
             "to": "method:Fixtures\\OrderService::roundMoney",
             "type": "calls",
             "line": 29,
+            "label": null
+        },
+        {
+            "from": "method:Fixtures\\OrderService::calculateTotal",
+            "to": "unresolved:array_sum",
+            "type": "calls",
+            "line": 29,
+            "label": null
+        },
+        {
+            "from": "method:Fixtures\\OrderService::roundMoney",
+            "to": "unresolved:round",
+            "type": "calls",
+            "line": 34,
             "label": null
         }
     ]

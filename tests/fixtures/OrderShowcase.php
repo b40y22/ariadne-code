@@ -90,3 +90,21 @@ final class OrderService extends BaseService
         return round($value, 2);
     }
 }
+
+/** A plain function: it is its own node, with its own flow, and the script below calls it. */
+function format_money(float $amount): string
+{
+    return number_format($amount, 2) . ' UAH';
+}
+
+// Legacy-style script: the code of the file that runs outside any class or function.
+require_once __DIR__ . '/bootstrap.php';
+
+if (!isset($_POST['items'])) {
+    http_response_code(400);
+    die('No items');
+}
+
+$id = new OrderService(new OrderRepository())->createOrder($_POST);
+
+echo format_money($id);

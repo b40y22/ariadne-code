@@ -9,6 +9,12 @@ enum NodeType: string
     case Class_ = 'class';
     case Method = 'method';
 
+    /** A function declared outside any class. */
+    case Function_ = 'function';
+
+    /** The code of a file that sits outside every class and function: what runs when the file is executed. */
+    case Script = 'script';
+
     /** A call target that static analysis could not map to a known declaration. */
     case Unresolved = 'unresolved';
 

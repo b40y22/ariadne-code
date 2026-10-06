@@ -12,10 +12,13 @@ final readonly class CallSite
     /**
      * @param string $label Human-readable callee, e.g. "$this->orders->save".
      * @param string|null $localMethod Lowercased method name when the call targets the current class.
+     * @param list<string> $functions Lowercased names a function call may refer to, most specific first
+     *                                (the namespaced name, then the global one). Empty for every other call.
      */
     public function __construct(
         public string $label,
         public ?string $localMethod,
         public int $line,
+        public array $functions = [],
     ) {}
 }

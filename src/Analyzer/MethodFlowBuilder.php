@@ -20,6 +20,9 @@ use PhpParser\Node\Expr\BinaryOp\Coalesce;
 use PhpParser\Node\Expr\BinaryOp\LogicalAnd;
 use PhpParser\Node\Expr\BinaryOp\LogicalOr;
 use PhpParser\Node\Expr\Closure;
+use PhpParser\Node\Expr\Exit_;
+use PhpParser\Node\Expr\FuncCall;
+use PhpParser\Node\Expr\Include_;
 use PhpParser\Node\Expr\Match_;
 use PhpParser\Node\Expr\MethodCall;
 use PhpParser\Node\Expr\NullsafeMethodCall;
@@ -59,9 +62,10 @@ use PhpParser\PrettyPrinter\Standard;
  * - Calls in loop headers (`while ($this->next())`) are not steps, as they run on every iteration.
  * - `do ... while` is drawn like `while`, with the condition node before the body.
  * - Exceptions thrown by called methods are unknown; a `try` links to each of its `catch` blocks.
- * - A closure or arrow function passed straight to a method or static call is a callback: its calls follow that
+ * - A closure or arrow function passed straight to a method, static or function call is a callback: its calls follow that
  *   call as plain steps entered by a `callback` edge. Whether the callee runs it is unknown, so the label says
  *   "callback" and not "runs". Closures anywhere else add no steps. Their `return` and `throw` never leave the method.
+ * - `exit`/`die` leave the flow like `return`; `include`/`require` are a step but the included file is not followed.
  * - A `finally` is reached on normal completion only.
  * - Code after an unconditional return/throw/break/continue is unreachable and left out.
  */
@@ -93,16 +97,33 @@ final class MethodFlowBuilder
         $this->printer = new Standard();
     }
 
-    public function build(ClassMethod $method): void
+    /** The flow of a method or function. Abstract and interface methods have no body, so no flow. */
+    public function build(ClassMethod|Function_ $function): void
     {
-        if ($method->stmts === null) {
-            return;
+        if ($function->stmts !== null) {
+            $this->flow($function->stmts, $function->getStartLine(), $function->getEndLine());
         }
+    }
 
-        $start = $this->add(NodeType::Start, 'start', $method);
-        $out = $this->stmts($method->stmts, [new FlowExit($start)]);
+    /**
+     * The flow of the code of a file that sits outside classes and functions.
+     *
+     * @param list<Stmt> $statements
+     */
+    public function buildScript(array $statements, int $startLine, int $endLine): void
+    {
+        $this->flow($statements, $startLine, $endLine);
+    }
 
-        $end = $this->add(NodeType::End, 'end', $method);
+    /**
+     * @param array<Stmt> $statements
+     */
+    private function flow(array $statements, int $startLine, int $endLine): void
+    {
+        $start = $this->addAt(NodeType::Start, 'start', $startLine, $endLine);
+        $out = $this->stmts($statements, [new FlowExit($start)]);
+
+        $end = $this->addAt(NodeType::End, 'end', $startLine, $endLine);
         $this->connect([...$out, ...$this->toEnd], $end);
     }
 
@@ -332,6 +353,8 @@ final class MethodFlowBuilder
         $branched = match (true) {
             $node instanceof Throw_ => $this->throw($node, $in),
             $node instanceof Match_ => $this->match($node, $in),
+            $node instanceof Exit_ => $this->exit($node, $in),
+            $node instanceof Include_ => $this->include($node, $in),
             $node instanceof Ternary => $this->ternary($node, $in),
             $node instanceof Coalesce => $this->guarded($node->left, $node->right, '??', ['set', 'null'], $in),
             $node instanceof CoalesceAssign => $this->guarded($node->var, $node->expr, '??=', ['set', 'null'], $in),
@@ -368,7 +391,7 @@ final class MethodFlowBuilder
     {
         $in = [new FlowExit($step)];
 
-        if (!$call instanceof MethodCall && !$call instanceof NullsafeMethodCall && !$call instanceof StaticCall) {
+        if (!$call instanceof MethodCall && !$call instanceof NullsafeMethodCall && !$call instanceof StaticCall && !$call instanceof FuncCall) {
             return $in;
         }
 
@@ -401,6 +424,42 @@ final class MethodFlowBuilder
         }
 
         return $in;
+    }
+
+    /**
+     * `exit` and `die` end the whole script, so they leave the flow like a `return`.
+     *
+     * @param list<FlowExit> $in
+     *
+     * @return list<FlowExit>
+     */
+    private function exit(Exit_ $node, array $in): array
+    {
+        if ($node->expr !== null) {
+            $in = $this->evaluate($node->expr, $in);
+        }
+
+        $step = $this->add(NodeType::Return_, $this->text($node), $node);
+        $this->connect($in, $step);
+        $this->toEnd[] = new FlowExit($step);
+
+        return [];
+    }
+
+    /**
+     * `include` and `require` run another file, which is the main way legacy code is put together.
+     *
+     * @param list<FlowExit> $in
+     *
+     * @return list<FlowExit>
+     */
+    private function include(Include_ $node, array $in): array
+    {
+        $in = $this->evaluate($node->expr, $in);
+        $step = $this->add(NodeType::Call, $this->text($node), $node);
+        $this->connect($in, $step);
+
+        return [new FlowExit($step)];
     }
 
     /**
@@ -548,6 +607,11 @@ final class MethodFlowBuilder
 
     private function add(NodeType $type, string $name, AstNode $at): string
     {
+        return $this->addAt($type, $name, $at->getStartLine(), $at->getEndLine());
+    }
+
+    private function addAt(NodeType $type, string $name, int $startLine, int $endLine): string
+    {
         $id = 'flow:' . $this->methodId . '#' . ++$this->counter;
 
         $this->graph->addNode(new Node(
@@ -555,8 +619,8 @@ final class MethodFlowBuilder
             type: $type,
             name: $name,
             file: $this->file,
-            lineStart: $at->getStartLine(),
-            lineEnd: $at->getEndLine(),
+            lineStart: $startLine,
+            lineEnd: $endLine,
             parent: $this->methodId,
         ));
 

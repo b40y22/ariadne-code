@@ -45,14 +45,15 @@ final class PhpAnalyzerTest extends TestCase
      * When the analyzer learns a new kind of branch, add it to OrderShowcase.php and to this list.
      */
     #[Test]
-    public function the_showcase_exercises_every_kind_of_flow_edge(): void
+    public function the_showcase_exercises_every_kind_of_node_and_flow_edge(): void
     {
         $code = file_get_contents(__DIR__ . '/../fixtures/OrderShowcase.php');
         self::assertIsString($code);
 
+        $graph = (new PhpAnalyzer())->analyze($code, 'OrderShowcase.php');
         $labels = [];
 
-        foreach ((new PhpAnalyzer())->analyze($code, 'OrderShowcase.php')->edges() as $edge) {
+        foreach ($graph->edges() as $edge) {
             if ($edge->type === EdgeType::Flow && $edge->label !== null) {
                 $labels[$edge->label] = true;
             }
@@ -64,6 +65,16 @@ final class PhpAnalyzerTest extends TestCase
 
         $cases = array_filter(array_keys($labels), static fn(string $label): bool => str_starts_with($label, 'case '));
         self::assertNotEmpty($cases, 'The showcase has no switch case.');
+
+        $types = [];
+
+        foreach ($graph->nodes() as $node) {
+            $types[$node->type->value] = true;
+        }
+
+        foreach (['class', 'method', 'function', 'script', 'unresolved', 'condition', 'loop', 'try', 'catch', 'throw', 'return', 'call'] as $type) {
+            self::assertArrayHasKey($type, $types, sprintf('The showcase has no "%s" node.', $type));
+        }
     }
 
     #[Test]
@@ -171,7 +182,8 @@ final class PhpAnalyzerTest extends TestCase
             }
             PHP);
 
-        self::assertSame(['A::a -> A::b', 'A::a -> A::b'], $this->calls($graph));
+        // The call to array_map is seen before the closure passed to it.
+        self::assertSame(['A::a -> A::b', 'A::a -> unresolved:array_map', 'A::a -> A::b'], $this->calls($graph));
     }
 
     #[Test]
@@ -212,15 +224,6 @@ final class PhpAnalyzerTest extends TestCase
         // analyze() prepends the "<?php" line, so the snippet starts on line 2.
         self::assertSame(['test.php', 2, 7], $nodes['class:A']);
         self::assertSame(['test.php', 4, 6], $nodes['method:A::a']);
-    }
-
-    #[Test]
-    public function code_outside_classes_is_ignored(): void
-    {
-        $graph = $this->analyze('function f() { $this->x(); }');
-
-        self::assertSame([], $graph->nodes());
-        self::assertSame([], $graph->edges());
     }
 
     #[Test]

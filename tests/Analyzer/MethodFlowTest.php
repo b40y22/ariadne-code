@@ -241,11 +241,15 @@ final class MethodFlowTest extends TestCase
     }
 
     #[Test]
-    public function closures_do_not_add_steps_to_the_enclosing_flow(): void
+    public function a_stored_closure_adds_no_steps_but_one_passed_to_a_function_is_a_callback(): void
     {
         $flow = $this->flow('function a() { $f = fn() => $this->b(); array_map(function () { $this->c(); }, []); }');
 
-        self::assertSame(['start -> end'], $flow);
+        self::assertSame([
+            'start -> call array_map',
+            'call array_map -> call $this->c [callback]',
+            'call $this->c -> end',
+        ], $flow);
     }
 
     #[Test]

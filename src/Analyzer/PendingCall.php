@@ -12,6 +12,7 @@ final readonly class PendingCall
     /**
      * @param string|null $localMethod Lowercased method name when the call targets the current class.
      * @param string $label Human-readable callee, used when the call stays unresolved.
+     * @param list<string> $functions Lowercased names a function call may refer to, most specific first.
      */
     public function __construct(
         public string $fromMethodId,
@@ -19,5 +20,6 @@ final readonly class PendingCall
         public ?string $localMethod,
         public string $label,
         public int $line,
+        public array $functions = [],
     ) {}
 }
