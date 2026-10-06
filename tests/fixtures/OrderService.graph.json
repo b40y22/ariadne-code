@@ -1,0 +1,130 @@
+{
+    "nodes": [
+        {
+            "id": "class:Fixtures\\OrderService",
+            "type": "class",
+            "name": "Fixtures\\OrderService",
+            "file": "OrderService.php",
+            "lineStart": 7,
+            "lineEnd": 36
+        },
+        {
+            "id": "method:Fixtures\\OrderService::__construct",
+            "type": "method",
+            "name": "__construct",
+            "file": "OrderService.php",
+            "lineStart": 9,
+            "lineEnd": 9
+        },
+        {
+            "id": "method:Fixtures\\OrderService::createOrder",
+            "type": "method",
+            "name": "createOrder",
+            "file": "OrderService.php",
+            "lineStart": 11,
+            "lineEnd": 18
+        },
+        {
+            "id": "method:Fixtures\\OrderService::validate",
+            "type": "method",
+            "name": "validate",
+            "file": "OrderService.php",
+            "lineStart": 20,
+            "lineEnd": 25
+        },
+        {
+            "id": "method:Fixtures\\OrderService::calculateTotal",
+            "type": "method",
+            "name": "calculateTotal",
+            "file": "OrderService.php",
+            "lineStart": 27,
+            "lineEnd": 30
+        },
+        {
+            "id": "method:Fixtures\\OrderService::roundMoney",
+            "type": "method",
+            "name": "roundMoney",
+            "file": "OrderService.php",
+            "lineStart": 32,
+            "lineEnd": 35
+        },
+        {
+            "id": "unresolved:$this->log",
+            "type": "unresolved",
+            "name": "$this->log",
+            "file": null,
+            "lineStart": null,
+            "lineEnd": null
+        },
+        {
+            "id": "unresolved:$this->orders->save",
+            "type": "unresolved",
+            "name": "$this->orders->save",
+            "file": null,
+            "lineStart": null,
+            "lineEnd": null
+        }
+    ],
+    "edges": [
+        {
+            "from": "class:Fixtures\\OrderService",
+            "to": "method:Fixtures\\OrderService::__construct",
+            "type": "contains",
+            "line": null
+        },
+        {
+            "from": "class:Fixtures\\OrderService",
+            "to": "method:Fixtures\\OrderService::createOrder",
+            "type": "contains",
+            "line": null
+        },
+        {
+            "from": "class:Fixtures\\OrderService",
+            "to": "method:Fixtures\\OrderService::validate",
+            "type": "contains",
+            "line": null
+        },
+        {
+            "from": "class:Fixtures\\OrderService",
+            "to": "method:Fixtures\\OrderService::calculateTotal",
+            "type": "contains",
+            "line": null
+        },
+        {
+            "from": "class:Fixtures\\OrderService",
+            "to": "method:Fixtures\\OrderService::roundMoney",
+            "type": "contains",
+            "line": null
+        },
+        {
+            "from": "method:Fixtures\\OrderService::createOrder",
+            "to": "method:Fixtures\\OrderService::validate",
+            "type": "calls",
+            "line": 13
+        },
+        {
+            "from": "method:Fixtures\\OrderService::createOrder",
+            "to": "method:Fixtures\\OrderService::calculateTotal",
+            "type": "calls",
+            "line": 14
+        },
+        {
+            "from": "method:Fixtures\\OrderService::createOrder",
+            "to": "unresolved:$this->log",
+            "type": "calls",
+            "line": 15
+        },
+        {
+            "from": "method:Fixtures\\OrderService::createOrder",
+            "to": "unresolved:$this->orders->save",
+            "type": "calls",
+            "line": 17
+        },
+        {
+            "from": "method:Fixtures\\OrderService::calculateTotal",
+            "to": "method:Fixtures\\OrderService::roundMoney",
+            "type": "calls",
+            "line": 29
+        }
+    ]
+}
