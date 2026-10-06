@@ -36,6 +36,10 @@ Classes are containers that hold their methods and can be resized; drag any bloc
 
 ![Method flow of createOrder](docs/screenshot-flow.png)
 
+**Execution replay:** below a method flow, the *Execution replay* panel walks through the method step by step. **→** takes the next step (or pick a branch when the code forks), **←** goes back, and a click on a log entry jumps to that step. The path walked so far lights up in the graph, and the current step is highlighted in the source code. It is static: no code runs, you choose the branches.
+
+![Execution replay](docs/screenshot-replay.png)
+
 The API is a single endpoint, `POST /api/analyze` with `{"code": "...", "file": "A.php"}`, answering with the Code Graph JSON. Submitted code is only parsed, never executed or stored, and requests are limited to 1 MB.
 
 `make demo` analyzes [`tests/fixtures/OrderService.php`](tests/fixtures/OrderService.php) and prints its graph. To analyze your own file:
@@ -121,8 +125,8 @@ Requires PHP 8.5. The graph for [`OrderService.php`](tests/fixtures/OrderService
 - [ ] Multiple files and project-level graph
 - [x] Web UI: class map with drag, zoom, auto-layout, resizable class containers, saved layout, linked to the source code
 - [x] Web UI: method flow view
+- [x] Execution replay: step through a method, choosing branches (static, no runtime tracing)
 - [ ] Web UI: expand/collapse of dependencies
-- [ ] Step-by-step execution replay of a method
 - [ ] AI explanations grounded in the graph
 
 ## License
