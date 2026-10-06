@@ -11,14 +11,16 @@ services:
     command: php -S 0.0.0.0:8080 -t public public/index.php
     environment:
       # Project mode: the code to explore, mounted read-only (`make up PROJECT=path`); the demo project otherwise.
-      ARIADNE_PROJECT: /project
+      # The demo is reached through the mounted repository, not mounted itself: a checkout that recreates its
+      # directory would leave a direct mount pointing at the deleted one.
+      ARIADNE_PROJECT: ${PROJECT_ROOT:-/project/tests/fixtures/project}
       ARIADNE_PROJECT_NAME: ${PROJECT_NAME:-demo}
     # Bound to this machine only: in project mode the API serves the source code of the mounted directory.
     ports:
       - "127.0.0.1:${API_PORT:-8090}:8080"
     volumes:
       - .:/app
-      - ${PROJECT_DIR:-./tests/fixtures/project}:/project:ro
+      - ${PROJECT_DIR:-.}:/project:ro
 
   web:
     image: node:22-alpine
