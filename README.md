@@ -77,7 +77,7 @@ docker compose run --rm php php bin/ariadne analyze path/to/YourClass.php
 
 ### Method flow
 
-Every method with a body also gets its control flow: calls in execution order, joined by `flow` edges. Branch edges carry a `label`: `true`/`false` (conditions), `body`/`next`/`exit`/`continue` (loops), `exception`/`throw` (try/catch), `set`/`null` (`??`, `??=`), `callback`.
+Every method with a body also gets its control flow: calls in execution order, joined by `flow` edges. Branch edges carry a `label`: `true`/`false` (conditions), `body`/`next`/`exit`/`continue` (loops), `exception`/`throw` (try/catch), `set`/`null` (`??`, `??=`), `callback`, and the case value for `switch` and `match`.
 
 Analyzing [`ShippingService`](tests/fixtures/ShippingService.php) gives, for `ship()`, among others:
 
@@ -95,7 +95,7 @@ condition !$this->inStock($item) -> try                    [false]
 Deliberate simplifications (the graph never claims more than it knows):
 
 - Expressions branch where PHP does: `?:` and ternaries (`true`/`false`), `??` and `??=` (`set`/`null`), and `&&`/`||` when their right side calls or throws. A `throw` inside an expression (`$x ?? throw new E()`) leaves the method, so a call after it runs only on the surviving path.
-- `switch`/`match` are not branched: their calls appear in source order as plain steps.
+- `switch` branches per `case` (labelled with the case value, or `default`; `no match` when there is no default) and falls through like PHP until a `break`; `match` branches per arm. Calls inside a `case` value itself are not steps.
 - Calls in loop headers (`while ($this->next())`) are not steps, because they run on every iteration.
 - `do ... while` is drawn like `while`, with the condition node before the body.
 - Exceptions raised by called methods are unknown, so a `try` links to each of its `catch` blocks.
@@ -120,7 +120,8 @@ Requires PHP 8.5. The graph for [`OrderService.php`](tests/fixtures/OrderService
 
 - [x] Classes, methods and method calls to Code Graph JSON
 - [x] Control flow inside methods: `if`/`else`, loops, `try`/`catch`, `throw`
-- [ ] `switch`/`match` branches, `finally` after early exits
+- [x] `switch`/`match` branches
+- [ ] `finally` after early exits
 - [ ] Interfaces, traits, enums, inheritance and dependency edges
 - [ ] Type-aware call resolution (typed properties, constructor promotion, PHPDoc)
 - [ ] Multiple files and project-level graph

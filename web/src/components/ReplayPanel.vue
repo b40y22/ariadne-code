@@ -75,6 +75,10 @@ function toggle(): void {
 
 const log = ref<HTMLElement>()
 
+// Only the labels that have a style become classes; free text such as "case 1" must not.
+const KNOWN_CHIPS = new Set(['true', 'body', 'set', 'exception', 'throw', 'callback'])
+const chipClass = (label: string): string => (KNOWN_CHIPS.has(label) ? `chip-${label}` : '')
+
 const entries = computed(() =>
   props.path.map((step, index) => {
     const data = props.nodes.get(step.nodeId)
@@ -131,7 +135,7 @@ watch(
         <span class="n">{{ entry.index + 1 }}</span>
         <CircleCheck :size="14" class="tick" />
         <span class="name">{{ entry.title }}</span>
-        <span v-if="entry.step.label" class="chip" :class="`chip-${entry.step.label}`">{{ entry.step.label }}</span>
+        <span v-if="entry.step.label" class="chip" :class="chipClass(entry.step.label)">{{ entry.step.label }}</span>
         <span class="where">{{ entry.subtitle }}</span>
       </li>
     </ol>
@@ -148,7 +152,7 @@ watch(
           :class="{ primary: index === 0 }"
           @click="emit('next', choice.edgeId)"
         >
-          <span v-if="choice.label" class="chip" :class="`chip-${choice.label}`">{{ choice.label }}</span>
+          <span v-if="choice.label" class="chip" :class="chipClass(choice.label)">{{ choice.label }}</span>
           {{ choice.targetTitle }}
           <ChevronRight :size="14" />
         </button>
