@@ -32,6 +32,9 @@ const icon = computed(() => ICONS[props.data.kind])
       <span v-if="data.subtitle" class="subtitle">{{ data.subtitle }}</span>
     </span>
     <Handle type="source" :position="Position.Bottom" />
+    <!-- Loop-backs travel along the right edge instead of cutting through the nodes in between. -->
+    <Handle id="loop-out" type="source" :position="Position.Right" />
+    <Handle id="loop-in" type="target" :position="Position.Right" />
   </div>
 </template>
 
@@ -74,10 +77,12 @@ const icon = computed(() => ICONS[props.data.kind])
 }
 
 .flow-node .title {
+  display: -webkit-box;
   overflow: hidden;
   font: 600 12.5px/1.3 var(--font-code);
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
 }
 
 .flow-node .subtitle {

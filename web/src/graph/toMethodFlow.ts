@@ -28,6 +28,9 @@ const FLOW_KINDS: ReadonlySet<NodeType> = new Set<NodeType>([
   'throw',
 ])
 
+/** How far a loop-back swings out to the right of the nodes it passes. */
+const LOOP_OFFSET = 56
+
 /** Labels that mean "the exceptional path": drawn in the danger colour. */
 const EXCEPTIONAL = new Set(['exception', 'throw'])
 /** Labels that return to an earlier node: drawn dashed so loops read as loops. */
@@ -114,6 +117,7 @@ export function toMethodFlow(graph: Graph, methodId: string): { nodes: FlowNode[
         label: edge.label ?? undefined,
         class: backward ? 'flow-edge flow-edge-backward' : flowEdgeClass(edge.label),
         markerEnd: { type: 'arrowclosed' as MarkerType, color: backward ? theme.muted : edgeColor(edge.label) },
+        ...(backward ? { sourceHandle: 'loop-out', targetHandle: 'loop-in', pathOptions: { offset: LOOP_OFFSET, borderRadius: 14 } } : {}),
       }
     })
 

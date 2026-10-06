@@ -3,6 +3,7 @@ import { Background } from '@vue-flow/background'
 import { VueFlow, useVueFlow, type Edge, type Node } from '@vue-flow/core'
 import { shallowRef, watch } from 'vue'
 
+import { readableViewport } from '../graph/viewport'
 import { applyPositions, clearPositions, layoutKey, loadPositions, savePositions } from '../graph/positions'
 import { theme } from '../theme'
 import ClassGroup from './ClassGroup.vue'
@@ -22,7 +23,7 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{ select: [id: string]; open: [id: string] }>()
 
-const { fitView, getNodes, updateNode, onNodeClick, onNodeDoubleClick, onNodeDragStop, onNodesChange, onNodesInitialized } = useVueFlow()
+const { fitView, setViewport, dimensions, getNodes, updateNode, onNodeClick, onNodeDoubleClick, onNodeDragStop, onNodesChange, onNodesInitialized } = useVueFlow()
 
 // Vue Flow owns the node positions from here on. Props only deliver a freshly analyzed graph;
 // selection and dragging must never rebuild nodes from them, or dragged blocks jump back.
@@ -74,10 +75,34 @@ onNodesChange((changes) => {
   }
 })
 
+/** A method flow is read like text, so it opens at a readable size from the top. A class map is shown whole. */
+function fit(): void {
+  if (props.mode === 'map') {
+    void fitView({ padding: 0.1, maxZoom: 1.25 })
+
+    return
+  }
+
+  const nodes = getNodes.value
+
+  if (nodes.length === 0) {
+    return
+  }
+
+  const bounds = {
+    minX: Math.min(...nodes.map((node) => node.position.x)),
+    minY: Math.min(...nodes.map((node) => node.position.y)),
+    maxX: Math.max(...nodes.map((node) => node.position.x + node.dimensions.width)),
+    maxY: Math.max(...nodes.map((node) => node.position.y + node.dimensions.height)),
+  }
+
+  void setViewport(readableViewport(bounds, dimensions.value, { padding: 24, minZoom: 0.85, maxZoom: 1.25 }))
+}
+
 onNodesInitialized(() => {
   if (pendingFit) {
     pendingFit = false
-    void fitView({ padding: 0.1, maxZoom: 1.25 })
+    fit()
   }
 })
 

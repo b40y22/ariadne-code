@@ -5,7 +5,7 @@ const elk = new ELK()
 
 const NODE_HEIGHT = 58
 const MIN_NODE_WIDTH = 190
-const MAX_NODE_WIDTH = 380
+const MAX_NODE_WIDTH = 420
 const CHAR_WIDTH = 8.5
 // Icon, gaps and padding around the title.
 const CHROME = 78
@@ -26,6 +26,23 @@ export type LayoutNode = Node & { data: { title: string; subtitle: string } }
 export interface LayoutOptions {
   /** Direction of the main flow. The class map reads left to right, a method flow top to bottom. */
   direction?: 'RIGHT' | 'DOWN'
+}
+
+/**
+ * Extra ELK options for a method flow, which is a story read from the top rather than a map.
+ * - Model order keeps the source order of statements and branches (`true` before `false`), so the main
+ *   path stays in one column instead of being shuffled to reduce crossings.
+ * - Wider gaps leave room for the branch labels that sit on the edges.
+ */
+const FLOW_OPTIONS: Record<string, string> = {
+  'elk.layered.considerModelOrder.strategy': 'NODES_AND_EDGES',
+  'elk.layered.crossingMinimization.forceNodeModelOrder': 'true',
+  'elk.layered.nodePlacement.bk.fixedAlignment': 'BALANCED',
+  'elk.spacing.nodeNode': '56',
+  'elk.layered.spacing.nodeNodeBetweenLayers': '64',
+  'elk.layered.spacing.edgeNodeBetweenLayers': '28',
+  'elk.spacing.edgeNode': '28',
+  'elk.spacing.edgeEdge': '18',
 }
 
 function widthOf(node: LayoutNode): number {
@@ -89,6 +106,7 @@ export async function layout<T extends LayoutNode>(nodes: T[], edges: Edge[], op
       'elk.spacing.nodeNode': '36',
       'elk.layered.spacing.nodeNodeBetweenLayers': '80',
       'elk.layered.spacing.edgeNodeBetweenLayers': '24',
+      ...(direction === 'DOWN' ? FLOW_OPTIONS : {}),
     },
     children: roots.map(toElk),
     edges: edges.map((edge) => ({ id: edge.id, sources: [edge.source], targets: [edge.target] })),
