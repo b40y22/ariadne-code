@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { Edge, Node } from '@vue-flow/core'
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 
 import { AnalyzeError, analyze } from './api'
 import CodeEditor, { type Highlight } from './components/CodeEditor.vue'
@@ -8,6 +8,7 @@ import GraphView from './components/GraphView.vue'
 import ReplayPanel from './components/ReplayPanel.vue'
 import { usePaneSplit } from './composables/usePaneSplit'
 import { useReplay } from './composables/useReplay'
+import { busiestUnit, focusGraph, focusUnits, unitOf, withFlow } from './graph/focus'
 import { layout } from './graph/layout'
 import { nodeAtLine } from './graph/lookup'
 import { LOOSE_TYPES, toClassMap } from './graph/toFlow'
@@ -15,11 +16,21 @@ import { countBuiltins, layoutEdges, toMethodFlow } from './graph/toMethodFlow'
 import type { Graph } from './graph/types'
 import { SAMPLE_CODE, SAMPLE_FILE } from './sample'
 import { DEFAULT_PANEL } from './panel'
+import { fetchFlow, fetchProject, fetchSource, isProjectMode, type ProjectOverview } from './project'
 import { readStored, readStoredNumber, writeStored } from './storage'
-import { hashFor, MAP, sameView, viewFromHash, type Selection, type View } from './view'
+import { focusFromHash, hashFor, MAP, sameView, viewFromHash, type Selection, type View } from './view'
 
-const code = ref(SAMPLE_CODE)
-const fileName = ref(SAMPLE_FILE)
+// File mode analyzes the code in the editor. Project mode (`?project`) explores the directory the API was started
+// with: the map is focused on one unit at a time, and the editor shows the file of whatever is selected.
+const projectMode = isProjectMode(location.search)
+const project = shallowRef<ProjectOverview | null>(null)
+const focus = ref<string | null>(null)
+const flow = shallowRef<Graph | null>(null)
+const sources = new Map<string, string>()
+
+const code = ref(projectMode ? '' : SAMPLE_CODE)
+/** The file the editor shows. */
+const fileName = ref(projectMode ? '' : SAMPLE_FILE)
 const graph = ref<Graph | null>(null)
 const view = ref<View>(MAP)
 const nodes = shallowRef<Node[]>([])
@@ -49,13 +60,25 @@ const flowMethodId = computed(() => (view.value.kind === 'flow' ? view.value.met
 
 // Each method flow keeps its own saved layout next to the class map's.
 // The class map keeps one layout with unresolved calls and one without, since they place different nodes.
+// In project mode the map depends on the focus, not on the file in the editor.
+const layoutBase = computed(() => (projectMode ? `project:${project.value?.name ?? ''}#${focus.value ?? ''}` : fileName.value))
 const layoutId = computed(() => {
   if (flowMethodId.value !== undefined) {
     // Hiding builtins removes nodes, so the two flows keep separate layouts.
-    return `${fileName.value}#${flowMethodId.value}${showBuiltins.value ? '#builtins' : ''}`
+    return `${layoutBase.value}#${flowMethodId.value}${showBuiltins.value ? '#builtins' : ''}`
   }
 
-  return showUnresolved.value ? `${fileName.value}#unresolved` : fileName.value
+  return showUnresolved.value ? `${layoutBase.value}#unresolved` : layoutBase.value
+})
+
+const units = computed(() => (project.value === null ? [] : focusUnits(project.value.graph)))
+const focusName = computed(() => units.value.find((unit) => unit.id === focus.value)?.name ?? '')
+
+/** The unit of the selected node, when it is not the one in focus: the map can move there. */
+const focusTarget = computed(() => {
+  const target = project.value === null || selected.value === null ? undefined : unitOf(project.value.graph, selected.value.id)
+
+  return target === focus.value ? undefined : target
 })
 
 const selectedMethodId = computed(() => {
@@ -85,7 +108,8 @@ const breadcrumb = computed(() => {
 const highlight = computed<Highlight | null>(() => {
   const node = graph.value?.nodes.find((candidate) => candidate.id === selected.value?.id)
 
-  if (!node || node.lineStart === null || node.lineEnd === null) {
+  // In project mode the editor shows one file of many; a node of another file has nothing to highlight in it.
+  if (!node || node.lineStart === null || node.lineEnd === null || (projectMode && node.file !== fileName.value)) {
     return null
   }
 
@@ -93,7 +117,7 @@ const highlight = computed<Highlight | null>(() => {
 })
 
 function syncHash(next: View): void {
-  history.replaceState(null, '', location.pathname + location.search + hashFor(next))
+  history.replaceState(null, '', location.pathname + location.search + hashFor(next, projectMode ? focus.value : null))
 }
 
 /** Lays out and shows a view of the graph. Returns false, leaving the current view, when it cannot be shown. */
@@ -130,6 +154,12 @@ async function run(): Promise<void> {
   error.value = null
 
   try {
+    if (projectMode) {
+      await loadProject()
+
+      return
+    }
+
     const result = await analyze(code.value, fileName.value)
     const wanted = graph.value === null ? viewFromHash(location.hash) : view.value
     const stillThere = wanted.kind === 'map' || result.nodes.some((node) => node.id === wanted.methodId)
@@ -146,9 +176,112 @@ async function run(): Promise<void> {
   }
 }
 
+/**
+ * Reads the project from the API (which re-analyzes it if a file changed) and shows the unit from the address,
+ * the one already in focus, or else the busiest one.
+ */
+async function loadProject(): Promise<void> {
+  const first = project.value === null
+  const overview = await fetchProject()
+  const wanted = first ? viewFromHash(location.hash) : view.value
+  const known = (id: string | null | undefined): id is string => id != null && overview.graph.nodes.some((node) => node.id === id)
+
+  project.value = overview
+  sources.clear()
+
+  const fromView = wanted.kind === 'flow' ? unitOf(overview.graph, wanted.methodId) : undefined
+  const unit = [fromView, first ? focusFromHash(location.hash) : focus.value, busiestUnit(overview.graph)].find(known)
+
+  if (overview.errors.length > 0) {
+    error.value = `${overview.errors.length} ${overview.errors.length === 1 ? 'file' : 'files'} could not be parsed and ${overview.errors.length === 1 ? 'is' : 'are'} left out: ${overview.errors.join('; ')}`
+  }
+
+  if (unit === undefined) {
+    error.value = 'The project has no PHP classes, functions or scripts.'
+
+    return
+  }
+
+  await focusOn(unit, fromView === unit ? wanted : MAP)
+}
+
+/** Shows the map around a unit, or the flow of one of its methods, and the unit's file in the editor. */
+async function focusOn(unit: string, next: View = MAP): Promise<void> {
+  const overview = project.value
+
+  if (overview === null) {
+    return
+  }
+
+  focus.value = unit
+  flow.value = next.kind === 'flow' ? await fetchFlow(next.methodId).catch(() => null) : null
+
+  const result = withFlow(focusGraph(overview.graph, unit), flow.value)
+
+  graph.value = result
+
+  if (next.kind === 'map' || flow.value === null || !(await show(result, next))) {
+    await show(result, MAP)
+  }
+
+  const shownId = view.value.kind === 'flow' ? view.value.methodId : unit
+  await showFile(overview.graph.nodes.find((node) => node.id === shownId)?.file)
+}
+
+let wantedFile: string | null = null
+
+/** Puts a file of the project in the editor. A later call wins, even if its file loads first. */
+async function showFile(file: string | null | undefined): Promise<void> {
+  if (!projectMode || file == null || file === wantedFile) {
+    return
+  }
+
+  wantedFile = file
+
+  try {
+    const text = sources.get(file) ?? (await fetchSource(file))
+
+    sources.set(file, text)
+
+    if (wantedFile === file) {
+      code.value = text
+      fileName.value = file
+    }
+  } catch (failure) {
+    wantedFile = null
+    error.value = failure instanceof AnalyzeError ? failure.message : 'Unexpected error while reading the file.'
+  }
+}
+
+// In project mode the editor follows the selection, which may belong to another file.
+watch(selected, (selection) => {
+  if (projectMode && selection !== null) {
+    void showFile(graph.value?.nodes.find((node) => node.id === selection.id)?.file)
+  }
+})
+
+function onPick(event: Event): void {
+  const name = (event.target as HTMLInputElement).value
+  const unit = units.value.find((candidate) => candidate.name === name)
+
+  if (unit !== undefined && unit.id !== focus.value) {
+    void focusOn(unit.id)
+  }
+}
+
 /** Pasting a link or using the browser's back and forward buttons changes only the hash; follow it. */
 async function onHashChange(): Promise<void> {
   const wanted = viewFromHash(location.hash)
+
+  if (projectMode) {
+    const unit = focusFromHash(location.hash) ?? focus.value
+
+    if (unit !== null && (unit !== focus.value || !sameView(wanted, view.value))) {
+      await focusOn(unit, wanted)
+    }
+
+    return
+  }
 
   if (graph.value === null || sameView(wanted, view.value)) {
     return
@@ -162,6 +295,17 @@ async function onHashChange(): Promise<void> {
 }
 
 async function openFlow(methodId: string): Promise<void> {
+  if (projectMode) {
+    const unit = project.value === null ? undefined : unitOf(project.value.graph, methodId)
+
+    if (unit !== undefined && HAS_FLOW.has(project.value?.graph.nodes.find((node) => node.id === methodId)?.type ?? '')) {
+      error.value = null
+      await focusOn(unit, { kind: 'flow', methodId })
+    }
+
+    return
+  }
+
   const current = graph.value
 
   if (current === null || !HAS_FLOW.has(current.nodes.find((node) => node.id === methodId)?.type ?? '')) {
@@ -192,7 +336,10 @@ async function toggleBuiltins(): Promise<void> {
 }
 
 async function backToMap(): Promise<void> {
-  if (graph.value !== null) {
+  if (projectMode && focus.value !== null) {
+    error.value = null
+    await focusOn(focus.value)
+  } else if (graph.value !== null) {
     error.value = null
     await show(graph.value, MAP)
   }
@@ -215,7 +362,10 @@ function onGraphSelect(id: string): void {
 }
 
 function onCursorLine(line: number): void {
-  const node = graph.value ? nodeAtLine(graph.value, line, flowMethodId.value) : undefined
+  const current = graph.value
+  // Lines only mean something within the file in the editor.
+  const inFile = current !== null && projectMode ? { ...current, nodes: current.nodes.filter((node) => node.file === fileName.value) } : current
+  const node = inFile ? nodeAtLine(inFile, line, flowMethodId.value) : undefined
 
   if (node && node.id !== selected.value?.id) {
     selected.value = { id: node.id, reveal: false }
@@ -235,13 +385,31 @@ onMounted(run)
   <div class="app">
     <header class="toolbar">
       <strong class="title"><span class="dot" />Ariadne Code</strong>
-      <label class="button">
-        Open .php
-        <input type="file" accept=".php,text/x-php" hidden @change="onFile" />
-      </label>
-      <button type="button" class="button primary" :disabled="loading" @click="run">
-        {{ loading ? 'Analyzing…' : 'Analyze' }}
-      </button>
+      <template v-if="projectMode">
+        <input
+          class="picker"
+          list="focus-units"
+          placeholder="Focus on a class…"
+          aria-label="Focus on a class, function or script"
+          :value="focusName"
+          @change="onPick"
+        />
+        <datalist id="focus-units">
+          <option v-for="unit in units" :key="unit.id" :value="unit.name" />
+        </datalist>
+        <button type="button" class="button" :disabled="loading" title="Read the project again; changed files are re-analyzed" @click="run">
+          {{ loading ? 'Analyzing…' : 'Reload' }}
+        </button>
+      </template>
+      <template v-else>
+        <label class="button">
+          Open .php
+          <input type="file" accept=".php,text/x-php" hidden @change="onFile" />
+        </label>
+        <button type="button" class="button primary" :disabled="loading" @click="run">
+          {{ loading ? 'Analyzing…' : 'Analyze' }}
+        </button>
+      </template>
       <button type="button" class="button" :disabled="graph === null" @click="graphView?.resetLayout()">
         Reset layout
       </button>
@@ -270,6 +438,16 @@ onMounted(run)
           Show flow
         </button>
         <button
+          v-if="projectMode"
+          type="button"
+          class="button"
+          :disabled="focusTarget === undefined"
+          title="Focus the map on the class of the selected block"
+          @click="focusTarget !== undefined && focusOn(focusTarget)"
+        >
+          Focus
+        </button>
+        <button
           type="button"
           class="button toggle"
           :aria-pressed="showUnresolved"
@@ -280,7 +458,7 @@ onMounted(run)
           External &amp; unresolved ({{ unresolvedCount }})
         </button>
       </template>
-      <span class="file">{{ fileName }}</span>
+      <span class="file"><template v-if="project">{{ project.name }} / </template>{{ fileName }}</span>
       <span v-if="error" class="error" role="alert">{{ error }}</span>
     </header>
 
@@ -327,7 +505,7 @@ onMounted(run)
         @keydown="nudgeSplit"
       />
       <section class="pane">
-        <CodeEditor v-model="code" :highlight="highlight" @cursor-line="onCursorLine" />
+        <CodeEditor v-model="code" :highlight="highlight" :read-only="projectMode" @cursor-line="onCursorLine" />
       </section>
     </main>
   </div>
@@ -401,6 +579,21 @@ onMounted(run)
 .button:disabled {
   opacity: 0.5;
   cursor: default;
+}
+
+.picker {
+  width: 280px;
+  padding: 7px 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font: 13px var(--font-code);
+}
+
+.picker:focus {
+  border-color: var(--accent);
+  outline: none;
 }
 
 .crumbs {

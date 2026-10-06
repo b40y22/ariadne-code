@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { hashFor, MAP, sameView, viewFromHash } from './view'
+import { focusFromHash, hashFor, MAP, sameView, viewFromHash } from './view'
 
 describe('view and hash', () => {
   it('round-trips a method id with colons and backslashes', () => {
@@ -34,5 +34,21 @@ describe('view and hash', () => {
     expect(sameView({ kind: 'flow', methodId: 'a' }, { kind: 'flow', methodId: 'a' })).toBe(true)
     expect(sameView({ kind: 'flow', methodId: 'a' }, { kind: 'flow', methodId: 'b' })).toBe(false)
     expect(sameView({ kind: 'flow', methodId: 'a' }, MAP)).toBe(false)
+  })
+
+  it('keeps the focus of project mode next to the method', () => {
+    const view = { kind: 'flow', methodId: 'method:Shop\\Mail\\Mailer::send' } as const
+    const hash = hashFor(view, 'class:Shop\\Mail\\Mailer')
+
+    expect(hash.startsWith('#focus=')).toBe(true)
+    expect(viewFromHash(hash)).toEqual(view)
+    expect(focusFromHash(hash)).toBe('class:Shop\\Mail\\Mailer')
+    expect(focusFromHash(hashFor(MAP, 'function:a&b'))).toBe('function:a&b')
+  })
+
+  it('has no focus when the hash names none', () => {
+    expect(focusFromHash('')).toBeNull()
+    expect(focusFromHash('#method=x')).toBeNull()
+    expect(focusFromHash('#focus=')).toBeNull()
   })
 })

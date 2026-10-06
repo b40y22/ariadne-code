@@ -13,7 +13,8 @@ export interface Highlight {
   reveal: boolean
 }
 
-const props = defineProps<{ modelValue: string; highlight: Highlight | null }>()
+/** `readOnly`: the code is shown, not edited (project mode reads files from the disk). */
+const props = defineProps<{ modelValue: string; highlight: Highlight | null; readOnly?: boolean }>()
 const emit = defineEmits<{
   'update:modelValue': [code: string]
   cursorLine: [line: number]
@@ -54,6 +55,7 @@ onMounted(() => {
     minimap: { enabled: false },
     fontSize: 13,
     scrollBeyondLastLine: false,
+    readOnly: props.readOnly ?? false,
   })
   decorations = editor.createDecorationsCollection()
 
@@ -75,6 +77,10 @@ watch(
 )
 
 watch(() => props.highlight, applyHighlight)
+watch(
+  () => props.readOnly,
+  (readOnly) => editor?.updateOptions({ readOnly: readOnly ?? false }),
+)
 
 function applyHighlight(highlight: Highlight | null): void {
   if (!editor || !decorations) {

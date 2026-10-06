@@ -12,14 +12,30 @@ export const MAP: View = { kind: 'map' }
 
 const HASH_KEY = 'method'
 
+/** In project mode, the unit the map is focused on. */
+const FOCUS_KEY = 'focus'
+
+const params = (hash: string): URLSearchParams => new URLSearchParams(hash.replace(/^#/, ''))
+
 export function viewFromHash(hash: string): View {
-  const methodId = new URLSearchParams(hash.replace(/^#/, '')).get(HASH_KEY)
+  const methodId = params(hash).get(HASH_KEY)
 
   return methodId === null || methodId === '' ? MAP : { kind: 'flow', methodId }
 }
 
-export function hashFor(view: View): string {
-  return view.kind === 'flow' ? `#${HASH_KEY}=${encodeURIComponent(view.methodId)}` : ''
+export function focusFromHash(hash: string): string | null {
+  const focus = params(hash).get(FOCUS_KEY)
+
+  return focus === '' ? null : focus
+}
+
+export function hashFor(view: View, focus: string | null = null): string {
+  const parts = [
+    ...(focus === null ? [] : [`${FOCUS_KEY}=${encodeURIComponent(focus)}`]),
+    ...(view.kind === 'flow' ? [`${HASH_KEY}=${encodeURIComponent(view.methodId)}`] : []),
+  ]
+
+  return parts.length === 0 ? '' : `#${parts.join('&')}`
 }
 
 export function sameView(a: View, b: View): boolean {
